@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-const N int =10
-const LEFT int=7
+const N int =50
+const LEFT int=30
 
 func DumpAll(node *[N]dhtNode)  {
 	log.Println("**********DUMP BEGIN************")
@@ -39,7 +39,7 @@ func Procedure()  {
 	log.SetFormatter(&log.TextFormatter{})
 	if true{
 	//if false{
-		f, err := os.OpenFile("log/log_"+strings.ReplaceAll(time.Now().Format(time.Stamp)," ","-")+".txt", os.O_WRONLY|os.O_CREATE, 0644)
+		f, err := os.OpenFile("log/log_"+strings.ReplaceAll(time.Now().Format(time.Stamp)," ","-")+".log", os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			panic(err)
 		}
@@ -73,7 +73,7 @@ func Procedure()  {
 	time.Sleep(10*time.Second)
 	DumpAll(&node)
 	log.Info("=== Partial nodes quited ===")
-	//AnswerDumpAll(&node)
+	AnswerDumpAll(&node)
 	for i,n:=range node{
 		if i<LEFT {
 			n.Quit()

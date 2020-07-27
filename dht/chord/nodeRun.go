@@ -2,12 +2,15 @@ package chord
 
 import (
 	"context"
+	"errors"
 	log "github.com/sirupsen/logrus"
 	"net"
 	"net/rpc"
 	"strconv"
 	"time"
 )
+
+var exitSig error=errors.New("EXIT")
 
 func (this *ChordNode) Create() {
 	this.nodePredecessor.Nullify()
@@ -24,6 +27,7 @@ func (this *ChordNode) RPCServe(l net.Listener) {
 		conn, err := l.Accept()
 		select {
 		case <-this.quitRPC:
+			log.Debug(this.addr.Port," RPC Normal Quit")
 			return
 		default:
 			if err != nil {
@@ -38,7 +42,9 @@ func (this *ChordNode) RPCServe(l net.Listener) {
 func (this *ChordNode) RunDaemon() {
 	go func() {
 		defer func() {
-			recover()
+			if t:=recover();t!=nil{
+				log.Warning(this.addr.Port," ", t.(error))
+			}
 			this.lis.Close()
 			log.Debug(this.addr.Port, " Daemon Quited.")
 		}()
@@ -46,12 +52,16 @@ func (this *ChordNode) RunDaemon() {
 			time.Sleep(time.Duration(UPDATE_INTERVAL) * time.Millisecond)
 			select {
 			case <-this.DaemonContext.Done():
+				log.Debug(this.addr.Port," Daemon Normal Quit")
 				return
 			default:
 				log.Debug(this.addr.Port, " Daemon invoked")
 				this.CheckPredecessor()
+				this.MayFatal()
 				Must(this.Stabilize())
+				this.MayFatal()
 				Must(this.FixFingers())
+				this.MayFatal()
 				log.Debug(this.addr.Port, " Daemon Slept")
 				//this.Dump(2)
 			}
@@ -64,7 +74,7 @@ func (this *ChordNode) Ping(addr string) bool {
 		return false
 	}
 	log.Trace(this.addr.Port, " ping ", addr)
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 3; i++ {
 		chanArrived:=make(chan bool)
 		go func() {
 			client, err := net.Dial("tcp", addr)
@@ -75,7 +85,8 @@ func (this *ChordNode) Ping(addr string) bool {
 		}()
 		select {
 		case <-this.DaemonContext.Done():
-			panic("EXIT")
+			log.Debug("Ping exit")
+			panic(exitSig)
 			return false
 		case ok:=<-chanArrived:
 			if ok{
@@ -107,6 +118,7 @@ func (this *ChordNode) ForceQuit() {
 	// rpc server should be down
 	this.quitRPC <- true
 	this.quitDaemonInvoker()
+	log.Debug(this.addr.Port," has been forced quited")
 }
 
 func (this *ChordNode) Quit() {

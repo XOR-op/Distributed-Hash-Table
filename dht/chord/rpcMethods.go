@@ -14,6 +14,7 @@ func (this *ChordNode) RPCSuccessor(reply *Address)error  {
 
 func (this *ChordNode) RPCPredecessor(reply *Address)error  {
 	log.Trace(this.addr.Port," [RPC] invoked of RPCPredecessor()")
+	this.CheckPredecessor()
 	this.predecessorLock.RLock()
 	reply.CopyFrom(&this.nodePredecessor)
 	this.predecessorLock.RUnlock()
@@ -42,6 +43,8 @@ func (this *ChordNode) RPCFindIDSuccessor(id Identifier,reply *AddressWithBoolea
 }
 
 func (this *ChordNode) RPCNotify(callee Address)error  {
+	this.notifyLock.Lock()
+	defer this.notifyLock.Unlock()
 	log.Trace(this.addr.Port," [RPC] invoked of RPCNotify(",callee.Addr,")")
 	this.predecessorLock.Lock()
 	defer this.predecessorLock.Unlock()

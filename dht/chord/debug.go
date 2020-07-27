@@ -1,9 +1,11 @@
 package chord
 
 import (
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"runtime"
+	"strings"
 )
 
 func (this *ChordNode) Dump(verbose int) {
@@ -31,13 +33,15 @@ func (this *ChordNode) AnswerDump() {
 }
 
 func (this *ChordNode)MayFatal()  {
+	pc, _, _, _ := runtime.Caller(1)
+	callerName:=runtime.FuncForPC(pc).Name()
 	if this.nodeSuccessor.isNil(){
 		log.Warning(this.addr.Port," successor is nil!")
 	}
 	this.fingerAndSuccessorLock.Lock()
 	if reSha1:=IDlize(this.nodeSuccessor.Addr);reSha1.ValPtr.Cmp(this.nodeSuccessor.Id.ValPtr)!=0{
-		log.Fatal("this:",this.addr.Port," Succ:",this.nodeSuccessor.Port," Correct:",reSha1," Wrong:",this.nodeSuccessor.Id)
-		panic("WRONG")
+		log.Fatal(callerName," this:",this.addr.Port," Succ:",this.nodeSuccessor.Port," Correct:",reSha1," Wrong:",this.nodeSuccessor.Id)
+		panic(errors.New("WRONG1"))
 	}
 	log.Debug(this.addr.Port," Successor:",this.nodeSuccessor.Port, " sha1 check passed")
 	for _,x:=range this.finger{
@@ -52,8 +56,8 @@ func (this *ChordNode)MayFatal()  {
 		return
 	}
 	if reSha1:=IDlize(this.nodePredecessor.Addr);reSha1.ValPtr.Cmp(this.nodePredecessor.Id.ValPtr)!=0{
-		log.Fatal("this:",this.addr.Port," Prede:",this.nodePredecessor.Port," Correct:",reSha1," Wrong:",this.nodePredecessor.Id)
-		panic("WRONG")
+		log.Fatal(callerName," this:",this.addr.Port," Prede:",this.nodePredecessor.Port," Correct:",reSha1," Wrong:",this.nodePredecessor.Id)
+		panic(errors.New("WRONG2"))
 	}
 	log.Debug(this.addr.Port," Predecessor:",this.nodePredecessor.Port, " sha1 check passed")
 }
@@ -70,4 +74,15 @@ func (this *Address)Validate(willLog bool,whoami interface{})  {
 			log.Trace("from ",whoami," this Address ", this.Port, " sha1 check passed")
 		}
 	}
+}
+
+func GOid() string {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	//id, err := strconv.Atoi(idField)
+	//if err != nil {
+	//	panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	//}
+	return idField+" "
 }

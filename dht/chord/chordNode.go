@@ -2,10 +2,10 @@ package chord
 
 import (
 	"context"
-	"errors"
 	log "github.com/sirupsen/logrus"
 	"net"
 	"net/rpc"
+	"runtime"
 	"strconv"
 	"sync"
 )
@@ -13,7 +13,7 @@ import (
 const (
 	BIT_WIDTH        int = 160
 	ALTERNATIVE_SIZE int = 5
-	UPDATE_INTERVAL  int = 100
+	UPDATE_INTERVAL  int = 200
 )
 
 type ChordNode struct {
@@ -33,6 +33,8 @@ type ChordNode struct {
 	predecessorLock        sync.RWMutex
 	listLock               sync.RWMutex
 	dataLock               sync.Mutex
+	validateSuccessorLock  sync.Mutex
+	notifyLock             sync.Mutex
 }
 
 func (this *ChordNode) Init(port int) {
@@ -50,6 +52,8 @@ func (this *ChordNode) Init(port int) {
 
 func (this *ChordNode) validateSuccessor(ignoreCurrent bool) {
 	// guarantee alternativeSuccessor valid
+	this.validateSuccessorLock.Lock()
+	defer this.validateSuccessorLock.Unlock()
 	this.MayFatal()
 	log.Trace(this.addr.Port, " is validating successor")
 	if !ignoreCurrent {
@@ -61,9 +65,11 @@ func (this *ChordNode) validateSuccessor(ignoreCurrent bool) {
 		}
 		this.fingerAndSuccessorLock.RUnlock()
 	}
+	log.Trace(this.addr.Port, " validateSuccessor another branch")
 	ref := this.nodeSuccessor.Addr
 	var warehouse [ALTERNATIVE_SIZE]Address
 	var addr Address
+	this.listLock.RLock()
 	for _, addr = range this.alternativeSuccessors {
 		if addr.Addr == ref {
 			continue
@@ -79,26 +85,40 @@ func (this *ChordNode) validateSuccessor(ignoreCurrent bool) {
 			}
 		}
 	}
+	this.listLock.RUnlock()
 	log.Fatal(this.addr.Port, " NO VALID SUCCESSOR!!!")
-	panic(errors.New("NO VALID SUCCESSOR!!!"))
+	return
+	//panic(errors.New("NO VALID SUCCESSOR!!!"))
 done:
+	// todo may be some bugs hidden
 	this.MayFatal()
 	for _, v := range this.alternativeSuccessors {
 		v.Validate(false, this.addr.Port)
 	}
-	log.Trace("alternative passed")
+	this.listLock.RUnlock()
+	log.Trace(this.addr.Port, " alternative passed")
 	addr.Validate(true, this.addr.Port)
 	log.Debug(this.addr.Port, " validate set successor:", addr.Port)
 	this.fingerAndSuccessorLock.Lock()
 	this.nodeSuccessor.CopyFrom(&addr)
 	this.fingerAndSuccessorLock.Unlock()
-	log.Trace(this.addr.Port," copy done")
-	// now alternativeSuccessor can be modified due to no use of addr
-	for i:=0;i<ALTERNATIVE_SIZE;i++{
-		this.alternativeSuccessors[i].CopyFrom(&warehouse[i])
-	}
-	log.Trace(this.addr.Port," alternative copy done")
+	log.Trace(this.addr.Port, " copy done")
 	this.MayFatal()
+	// now alternativeSuccessor can be modified due to no use of addr
+	log.Trace(this.addr.Port, " alternative copy start")
+	pc, _, _, _ := runtime.Caller(1)
+	callerName := runtime.FuncForPC(pc).Name()
+	log.Trace(this.addr.Port, " father ", callerName)
+	this.listLock.Lock()
+	for i := 0; i < ALTERNATIVE_SIZE; i++ {
+		this.alternativeSuccessors[i].CopyFrom(&warehouse[i])
+		this.alternativeSuccessors[i].Validate(false, "afterward failure")
+	}
+	this.listLock.Unlock()
+	this.nodeSuccessor.Validate(false, "GEEZ")
+	log.Trace(this.addr.Port, " alternative copy done")
+	this.MayFatal()
+	log.Trace(this.addr.Port, " validating return")
 	return
 }
 
@@ -108,6 +128,7 @@ func (this *ChordNode) closestPrecedingNode(id Identifier) *Address {
 	log.Trace(this.addr.Port, " Enter find finger")
 	this.fingerAndSuccessorLock.RLock()
 	defer this.fingerAndSuccessorLock.RUnlock()
+	// todo use map to reduce ping
 	for i := BIT_WIDTH - 1; i >= 0; i -= 1 {
 		if !this.finger[i].isNil() && this.finger[i].Id.In(&this.addr.Id, &id) && this.Ping(this.finger[i].Addr) {
 			return &this.finger[i]
@@ -120,20 +141,21 @@ func (this *ChordNode) FindIdSuccessor(id Identifier, reply *Address) (err error
 	defer func() {
 		if t := recover(); t != nil {
 			err = t.(error)
-			log.Fatal(err)
+			log.Warning(this.addr.Port, " ", err)
+			//log.Fatal(err)
 		}
 	}()
 	this.MayFatal()
 	if id.InRightClosure(&this.addr.Id, &this.nodeSuccessor.Id) {
-		log.Trace(this.addr.Port, " First branch")
+		log.Trace(GOid(), this.addr.Port, " First branch")
 		this.validateSuccessor(false)
 		this.fingerAndSuccessorLock.RLock()
-		log.Trace(this.addr.Port, " locally get ID ", id, "'s successor:", this.nodeSuccessor.Port)
+		log.Trace(GOid(), this.addr.Port, " locally get ID ", id, "'s successor:", this.nodeSuccessor.Port)
 		reply.CopyFrom(this.nodeSuccessor)
 		this.fingerAndSuccessorLock.RUnlock()
 		return nil
 	} else {
-		log.Trace(this.addr.Port, " Second branch")
+		log.Trace(GOid(), this.addr.Port, " Second branch")
 		stru := NewAddressWithBoolean(this.closestPrecedingNode(id), false)
 		for !stru.Stat {
 			// todo retry
@@ -142,9 +164,9 @@ func (this *ChordNode) FindIdSuccessor(id Identifier, reply *Address) (err error
 			var tmpAddr Address
 			tmpAddr.CopyFrom(&stru.Addr)
 			Must(RemoteCall(tmpAddr, "RPCWrapper.FindIDSuccessor", id, &stru))
-			log.Trace("cur stru.addr:", stru.Addr.Port)
+			log.Trace(GOid(), "cur stru.addr:", stru.Addr.Port)
 		}
-		log.Trace(this.addr.Port, " remotely get ID ", id, "'s successor:", stru.Addr.Port)
+		log.Trace(GOid(), this.addr.Port, " remotely get ID ", id, "'s successor:", stru.Addr.Port)
 		reply.CopyFrom(&stru.Addr)
 		this.MayFatal()
 		return nil
@@ -155,6 +177,7 @@ func (this *ChordNode) Stabilize() (err error) {
 	defer func() {
 		if t := recover(); t != nil {
 			err = t.(error)
+			log.Warning(this.addr.Port, " ", err)
 		}
 	}()
 	log.Trace(this.addr.Port, " stabilize. Cur suc:", this.nodeSuccessor.Port)
@@ -167,7 +190,10 @@ func (this *ChordNode) Stabilize() (err error) {
 	}
 	defer client.Close()
 	var x Address
-	Must(client.Call("RPCWrapper.Predecessor", 0, &x))
+	if err := client.Call("RPCWrapper.Predecessor", 0, &x); err != nil {
+		this.validateSuccessor(false)
+		return nil // ignore explicitly
+	}
 	if !x.isNil() && x.Id.In(&this.addr.Id, &this.nodeSuccessor.Id) {
 		xclient, erra := rpc.Dial("tcp", x.Addr)
 		if erra == nil {
@@ -195,7 +221,7 @@ func (this *ChordNode) FixFingers() error {
 }
 
 func (this *ChordNode) CheckPredecessor() {
-	log.Trace(this.addr.Port, " check predecessor. Cur pre:", this.nodePredecessor.Port)
+	log.Trace(GOid(), this.addr.Port, " check predecessor. Cur pre:", this.nodePredecessor.Port)
 	this.predecessorLock.Lock()
 	defer this.predecessorLock.Unlock()
 	if !this.Ping(this.nodePredecessor.Addr) {

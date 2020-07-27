@@ -58,14 +58,14 @@ func (this *ChordNode) RPCNotify(callee Address)error  {
 
 func (this *ChordNode)RPCCopyList(reply *[ALTERNATIVE_SIZE]Address)error  {
 	log.Trace(this.addr.Port," [RPC] invoked of RPCCopyList()")
-	this.listLock.RLock()
+	this.alternativeListLock.RLock()
 	for i:=1;i<ALTERNATIVE_SIZE;i++{
 		reply[i].CopyFrom(&this.alternativeSuccessors[i-1])
 		reply[i].Validate(false,this.addr.Port)
 		this.alternativeSuccessors[i-1].Validate(false,this.addr.Port)
 	}
 	//copy(reply[1:],this.alternativeSuccessors[:ALTERNATIVE_SIZE-1])
-	this.listLock.RUnlock()
+	this.alternativeListLock.RUnlock()
 	reply[0].CopyFrom(this.nodeSuccessor)
 	reply[0].Validate(true,this.addr.Port)
 	this.addr.Validate(true,this.addr.Port)

@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-const N int =50
-const LEFT int=30
+const N int =100
+const LEFT int=50
 
 func DumpAll(node *[N]dhtNode)  {
 	log.Println("**********DUMP BEGIN************")

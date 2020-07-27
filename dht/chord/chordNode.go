@@ -31,10 +31,11 @@ type ChordNode struct {
 	alternativeSuccessors  [ALTERNATIVE_SIZE]Address
 	fingerAndSuccessorLock sync.RWMutex
 	predecessorLock        sync.RWMutex
-	listLock               sync.RWMutex
+	alternativeListLock    sync.RWMutex
 	dataLock               sync.Mutex
 	validateSuccessorLock  sync.Mutex
 	notifyLock             sync.Mutex
+	joinLock               sync.Mutex
 }
 
 func (this *ChordNode) Init(port int) {
@@ -67,9 +68,9 @@ func (this *ChordNode) validateSuccessor(ignoreCurrent bool) {
 	}
 	log.Trace(this.addr.Port, " validateSuccessor another branch")
 	ref := this.nodeSuccessor.Addr
-	var warehouse [ALTERNATIVE_SIZE]Address
+	//var warehouse [ALTERNATIVE_SIZE]Address
 	var addr Address
-	this.listLock.RLock()
+	this.alternativeListLock.RLock()
 	for _, addr = range this.alternativeSuccessors {
 		if addr.Addr == ref {
 			continue
@@ -79,23 +80,22 @@ func (this *ChordNode) validateSuccessor(ignoreCurrent bool) {
 		addr.Validate(true, this.addr.Port)
 		log.Trace(this.addr.Port, " go")
 		if this.Ping(addr.Addr) {
-			addr.Validate(true, this.addr.Port)
-			if err := RemoteCall(addr, "RPCWrapper.CopyList", 0, &warehouse); err == nil {
-				goto done
-			}
+			//addr.Validate(true, this.addr.Port)
+			//if err := RemoteCall(addr, "RPCWrapper.CopyList", 0, &warehouse); err == nil {
+			goto done
+			//}
 		}
 	}
-	this.listLock.RUnlock()
-	log.Fatal(this.addr.Port, " NO VALID SUCCESSOR!!!")
+	this.alternativeListLock.RUnlock()
+	log.Fatal(this.addr.Port, " NO VALID SUCCESSOR!!!",this.alternativeSuccessors)
 	return
 	//panic(errors.New("NO VALID SUCCESSOR!!!"))
 done:
-	// todo may be some bugs hidden
 	this.MayFatal()
 	for _, v := range this.alternativeSuccessors {
 		v.Validate(false, this.addr.Port)
 	}
-	this.listLock.RUnlock()
+	this.alternativeListLock.RUnlock()
 	log.Trace(this.addr.Port, " alternative passed")
 	addr.Validate(true, this.addr.Port)
 	log.Debug(this.addr.Port, " validate set successor:", addr.Port)
@@ -109,12 +109,13 @@ done:
 	pc, _, _, _ := runtime.Caller(1)
 	callerName := runtime.FuncForPC(pc).Name()
 	log.Trace(this.addr.Port, " father ", callerName)
-	this.listLock.Lock()
-	for i := 0; i < ALTERNATIVE_SIZE; i++ {
-		this.alternativeSuccessors[i].CopyFrom(&warehouse[i])
-		this.alternativeSuccessors[i].Validate(false, "afterward failure")
-	}
-	this.listLock.Unlock()
+	//this.alternativeListLock.Lock()
+	//for i := 0; i < ALTERNATIVE_SIZE; i++ {
+	//	this.alternativeSuccessors[i].CopyFrom(&warehouse[i])
+	//	this.alternativeSuccessors[i].Validate(false, "afterward failure")
+	//}
+	//this.alternativeListLock.Unlock()
+	this.UpdateAlternativeSuccessor()
 	this.nodeSuccessor.Validate(false, "GEEZ")
 	log.Trace(this.addr.Port, " alternative copy done")
 	this.MayFatal()
@@ -128,10 +129,16 @@ func (this *ChordNode) closestPrecedingNode(id Identifier) *Address {
 	log.Trace(this.addr.Port, " Enter find finger")
 	this.fingerAndSuccessorLock.RLock()
 	defer this.fingerAndSuccessorLock.RUnlock()
-	// todo use map to reduce ping
+	hasTested:=make(map[string]bool)
 	for i := BIT_WIDTH - 1; i >= 0; i -= 1 {
-		if !this.finger[i].isNil() && this.finger[i].Id.In(&this.addr.Id, &id) && this.Ping(this.finger[i].Addr) {
-			return &this.finger[i]
+		if !this.finger[i].isNil() {
+			if _,ok:=hasTested[this.finger[i].Addr];!ok {
+				if this.finger[i].Id.In(&this.addr.Id, &id) && this.Ping(this.finger[i].Addr) {
+					return &this.finger[i]
+				}else {
+					hasTested[this.finger[i].Addr]=true
+				}
+			}
 		}
 	}
 	return &this.finger[0]
@@ -157,13 +164,23 @@ func (this *ChordNode) FindIdSuccessor(id Identifier, reply *Address) (err error
 	} else {
 		log.Trace(GOid(), this.addr.Port, " Second branch")
 		stru := NewAddressWithBoolean(this.closestPrecedingNode(id), false)
+		var backup Address
+		backup.Nullify()
+		backup.CopyFrom(this.nodeSuccessor)
 		for !stru.Stat {
-			// todo retry
+			//todo retry
 			log.Trace(this.addr.Port, " Sub loop")
 			// copy for debug only
 			var tmpAddr Address
 			tmpAddr.CopyFrom(&stru.Addr)
-			Must(RemoteCall(tmpAddr, "RPCWrapper.FindIDSuccessor", id, &stru))
+			if cerr := RemoteCall(tmpAddr, "RPCWrapper.FindIDSuccessor", id, &stru); cerr != nil {
+				if stru.Addr.Addr==backup.Addr{
+					this.validateSuccessor(false)
+					backup.CopyFrom(this.nodeSuccessor)
+				}
+				log.Warning(this.addr.Port," fail ",stru.Addr.Port,", has to retry ",backup.Port)
+				stru.Addr.CopyFrom(&backup)
+			}
 			log.Trace(GOid(), "cur stru.addr:", stru.Addr.Port)
 		}
 		log.Trace(GOid(), this.addr.Port, " remotely get ID ", id, "'s successor:", stru.Addr.Port)
@@ -180,22 +197,24 @@ func (this *ChordNode) Stabilize() (err error) {
 			log.Warning(this.addr.Port, " ", err)
 		}
 	}()
+	defer log.Trace(this.addr.Port," stabilize done")
 	log.Trace(this.addr.Port, " stabilize. Cur suc:", this.nodeSuccessor.Port)
 	this.MayFatal()
-	client, err := rpc.Dial("tcp", this.nodeSuccessor.Addr)
+	client, err := Dial("tcp", this.nodeSuccessor.Addr)
 	for err != nil {
 		// retry and reconnect
 		this.validateSuccessor(false)
-		client, err = rpc.Dial("tcp", this.nodeSuccessor.Addr)
+		client, err = Dial("tcp", this.nodeSuccessor.Addr)
 	}
 	defer client.Close()
 	var x Address
 	if err := client.Call("RPCWrapper.Predecessor", 0, &x); err != nil {
+		log.Warning(this.addr.Port," find successor.predecessor failed")
 		this.validateSuccessor(false)
 		return nil // ignore explicitly
 	}
 	if !x.isNil() && x.Id.In(&this.addr.Id, &this.nodeSuccessor.Id) {
-		xclient, erra := rpc.Dial("tcp", x.Addr)
+		xclient, erra := Dial("tcp", x.Addr)
 		if erra == nil {
 			defer xclient.Close()
 			this.fingerAndSuccessorLock.Lock()
@@ -203,8 +222,8 @@ func (this *ChordNode) Stabilize() (err error) {
 			this.nodeSuccessor.CopyFrom(&x)
 			this.fingerAndSuccessorLock.Unlock()
 			Must(xclient.Call("RPCWrapper.Notify", this.addr, nil))
-			x.Validate(false, this.addr.Port)
-			Must(xclient.Call("RPCWrapper.CopyList", 0, &this.alternativeSuccessors))
+			//x.Validate(false, this.addr.Port)
+			this.UpdateAlternativeSuccessor()
 			x.Validate(false, this.addr.Port)
 			return erra
 		}
@@ -225,7 +244,25 @@ func (this *ChordNode) CheckPredecessor() {
 	this.predecessorLock.Lock()
 	defer this.predecessorLock.Unlock()
 	if !this.Ping(this.nodePredecessor.Addr) {
+		if !this.nodePredecessor.isNil() {
+			log.Trace(this.addr.Port, " clear predecessor")
+		}
 		this.nodePredecessor.Nullify()
+	}
+}
+
+func (this *ChordNode) UpdateAlternativeSuccessor() {
+	log.Trace(GOid(), this.addr.Port, " check alternative successor")
+	var warehouse [ALTERNATIVE_SIZE]Address
+	if this.addr.Addr != this.nodeSuccessor.Addr {
+		if RemoteCall(*this.nodeSuccessor, "RPCWrapper.CopyList", 0, &warehouse)!=nil{
+			return
+		}
+	}
+	this.alternativeListLock.Lock()
+	defer this.alternativeListLock.Unlock()
+	for i:=0;i<ALTERNATIVE_SIZE;i++{
+		this.alternativeSuccessors[i].CopyFrom(&warehouse[i])
 	}
 }
 
@@ -236,6 +273,8 @@ func (this *ChordNode) Join(addr Address) (err error) {
 			panic(t)
 		}
 	}()
+	this.joinLock.Lock()
+	defer this.joinLock.Unlock()
 	log.Trace(this.addr.Port, " Joined from ", addr.Port)
 	this.nodePredecessor.Nullify()
 	defer func() {
@@ -244,12 +283,12 @@ func (this *ChordNode) Join(addr Address) (err error) {
 		}
 	}()
 	// find successor by addr
-	client, err := rpc.Dial("tcp", addr.Addr)
+	client, err := Dial("tcp", addr.Addr)
 	Must(err)
 	Must(client.Call("RPCWrapper.LocalFindIDSuccessor", this.addr.Id, this.nodeSuccessor))
 	_ = client.Close()
 	// call to successor
-	client, err = rpc.Dial("tcp", this.nodeSuccessor.Addr)
+	client, err = Dial("tcp", this.nodeSuccessor.Addr)
 	Must(err)
 	Must(client.Call("RPCWrapper.CopyList", 0, &this.alternativeSuccessors))
 	Must(client.Call("RPCWrapper.Notify", this.addr, nil))

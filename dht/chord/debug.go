@@ -84,5 +84,5 @@ func GOid() string {
 	//if err != nil {
 	//	panic(fmt.Sprintf("cannot get goroutine id: %v", err))
 	//}
-	return idField+" "
+	return "[threadid:"+idField+"] "
 }

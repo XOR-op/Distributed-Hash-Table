@@ -4,6 +4,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/rpc"
 	"runtime"
+	"time"
 )
 
 func Must(err error) bool {
@@ -13,6 +14,10 @@ func Must(err error) bool {
 		panic(err)
 	}
 	return true
+}
+
+type TemporaryError interface {
+	Temporary() bool
 }
 
 
@@ -26,7 +31,7 @@ func RemoteCall(addr Address, method string, arg, ret interface{}) (err error) {
 		}
 	}()
 	addr.Validate(false,121)
-	client, err := rpc.Dial("tcp", addr.Addr)
+	client, err := Dial("tcp", addr.Addr)
 	addr.Validate(false,122)
 	if err != nil {
 		panic(err)
@@ -38,4 +43,18 @@ func RemoteCall(addr Address, method string, arg, ret interface{}) (err error) {
 	log.Trace(method)
 	addr.Validate(false,123)
 	return
+}
+
+func Dial(method,addr string)(*rpc.Client,error)  {
+	client,err:=rpc.Dial(method,addr)
+	for retry_cnt:=1;err!=nil && retry_cnt<=4;retry_cnt++{
+		// avoid "resource temporarily unavailable" error
+		if terr,ok:=err.(TemporaryError);ok&&terr.Temporary() {
+			time.Sleep(time.Duration(retry_cnt)*30 * time.Millisecond)
+			client, err = rpc.Dial("tcp", addr)
+		}else {
+			break
+		}
+	}
+	return client,err
 }

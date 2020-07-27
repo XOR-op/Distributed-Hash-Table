@@ -75,6 +75,7 @@ func (this *Address) isNil() bool {
 }
 func (this *Address) Nullify()  {
 	this.Addr =""
+	this.Port=0
 	this.Id.ValPtr=nil
 }
 

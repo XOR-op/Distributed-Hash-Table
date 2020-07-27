@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var exitSig error=errors.New("EXIT")
+var exitSig =errors.New("EXIT")
 
 func (this *ChordNode) Create() {
 	this.nodePredecessor.Nullify()
@@ -48,7 +48,9 @@ func (this *ChordNode) RunDaemon() {
 			this.lis.Close()
 			log.Debug(this.addr.Port, " Daemon Quited.")
 		}()
+		//counter:=0
 		for {
+			//counter=(counter+1)%2
 			time.Sleep(time.Duration(UPDATE_INTERVAL) * time.Millisecond)
 			select {
 			case <-this.DaemonContext.Done():
@@ -62,6 +64,9 @@ func (this *ChordNode) RunDaemon() {
 				this.MayFatal()
 				Must(this.FixFingers())
 				this.MayFatal()
+				//if counter==0 {
+					this.UpdateAlternativeSuccessor()
+				//}
 				log.Debug(this.addr.Port, " Daemon Slept")
 				//this.Dump(2)
 			}
@@ -75,28 +80,31 @@ func (this *ChordNode) Ping(addr string) bool {
 	}
 	log.Trace(this.addr.Port, " ping ", addr)
 	for i := 0; i < 3; i++ {
-		chanArrived:=make(chan bool)
+		chanArrived:=make(chan error)
 		go func() {
-			client, err := net.Dial("tcp", addr)
+			client, err := Dial("tcp", addr)
 			if err==nil{
 				client.Close()
 			}
-			chanArrived<-err==nil
+			chanArrived<-err
 		}()
 		select {
 		case <-this.DaemonContext.Done():
 			log.Debug("Ping exit")
 			panic(exitSig)
 			return false
-		case ok:=<-chanArrived:
-			if ok{
+		case err :=<-chanArrived:
+			if err ==nil{
 				return true
+			}else {
+				log.Warning(this.addr.Port," ping with err:",err)
+				return false
 			}
-		case <-time.After(300*time.Millisecond):
+		case <-time.After(500*time.Millisecond):
 			break
 		}
 	}
-	log.Warning(this.addr.Port, " ping ", addr, " FAILED")
+	log.Warning(this.addr.Port, " ping ", addr, " timeout FAILED")
 	return false
 }
 

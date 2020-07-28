@@ -19,9 +19,12 @@ func (this *ChordNode) Dump(verbose int) {
 		"Predecessor": this.nodePredecessor.Port,
 		//"Finger":      s,
 	}).Info("[DUMP]\n")
-	this.addr.Validate(false,"self")
-	this.nodeSuccessor.Validate(false,"succ")
-	this.nodePredecessor.Validate(false,"pred")
+	//if this.nodeSuccessor.Port!=0 {
+	//	this.MayFatal()
+	//}
+	//this.addr.Validate(false,"self")
+	//this.nodeSuccessor.Validate(false,"succ")
+	//this.nodePredecessor.Validate(false,"pred")
 }
 func (this *ChordNode) AnswerDump() {
 	//s := make([]int, 10)
@@ -38,20 +41,29 @@ func (this *ChordNode)MayFatal()  {
 	if this.nodeSuccessor.isNil(){
 		log.Warning(this.addr.Port," successor is nil!")
 	}
-	this.fingerAndSuccessorLock.Lock()
+	this.fingerAndSuccessorLock.RLock()
 	if reSha1:=IDlize(this.nodeSuccessor.Addr);reSha1.ValPtr.Cmp(this.nodeSuccessor.Id.ValPtr)!=0{
 		log.Fatal(callerName," this:",this.addr.Port," Succ:",this.nodeSuccessor.Port," Correct:",reSha1," Wrong:",this.nodeSuccessor.Id)
 		panic(errors.New("WRONG1"))
 	}
 	log.Debug(this.addr.Port," Successor:",this.nodeSuccessor.Port, " sha1 check passed")
-	for _,x:=range this.finger{
+	/*
+	for i,x:=range this.finger{
 		if !x.isNil() {
-			x.Validate(false,this.addr.Port)
+			whoami:=strconv.Itoa(this.addr.Port)+"^^^"
+			if x.isNil(){
+				return
+			}
+			if reSha1:=IDlize(x.Addr);reSha1.ValPtr.Cmp(x.Id.ValPtr)!=0{
+				log.Fatal(callerName, " from ",whoami,":this FINGER ",i,":",x.Port," Correct:",reSha1," Wrong:",x.Id)
+			}
 		}
 	}
-	this.fingerAndSuccessorLock.Unlock()
-	this.predecessorLock.Lock()
-	defer this.predecessorLock.Unlock()
+
+	 */
+	this.fingerAndSuccessorLock.RUnlock()
+	this.predecessorLock.RLock()
+	defer this.predecessorLock.RUnlock()
 	if this.nodePredecessor.isNil(){
 		return
 	}
@@ -61,6 +73,7 @@ func (this *ChordNode)MayFatal()  {
 	}
 	log.Debug(this.addr.Port," Predecessor:",this.nodePredecessor.Port, " sha1 check passed")
 }
+
 
 func (this *Address)Validate(willLog bool,whoami interface{})  {
 	if this.isNil(){
@@ -75,6 +88,8 @@ func (this *Address)Validate(willLog bool,whoami interface{})  {
 		}
 	}
 }
+
+
 
 func GOid() string {
 	var buf [64]byte

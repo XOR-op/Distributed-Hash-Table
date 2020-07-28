@@ -30,9 +30,9 @@ func RemoteCall(addr Address, method string, arg, ret interface{}) (err error) {
 			err = t.(error)
 		}
 	}()
-	addr.Validate(false,121)
+	//addr.Validate(false,121)
 	client, err := Dial("tcp", addr.Addr)
-	addr.Validate(false,122)
+	//addr.Validate(false,122)
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +41,7 @@ func RemoteCall(addr Address, method string, arg, ret interface{}) (err error) {
 		panic(err)
 	}
 	log.Trace(method)
-	addr.Validate(false,123)
+	//addr.Validate(false,123)
 	return
 }
 

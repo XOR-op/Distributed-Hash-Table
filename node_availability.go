@@ -2,14 +2,16 @@ package main
 
 import (
 	"DHT/dht/chord"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const N int =100
+const N int =120
 const LEFT int=50
 
 func DumpAll(node *[N]dhtNode)  {
@@ -20,8 +22,10 @@ func DumpAll(node *[N]dhtNode)  {
 	log.Println("***********DUMP END*************")
 }
 func AnswerDumpAll(node *[N]dhtNode)  {
-	for _,n:=range node {
-		n.AnswerDump()
+	for i,n:=range node {
+		if i<LEFT {
+			n.AnswerDump()
+		}
 	}
 }
 func Procedure()  {
@@ -66,7 +70,9 @@ func Procedure()  {
 	time.Sleep(1*time.Second)
 	log.Info("=== All nodes joined ===")
 	for i:=N-1;i>=LEFT;i--{
+		log.Debug(i,"?")
 		node[i].ForceQuit()
+		log.Debug(i, " Quit")
 		time.Sleep(1000*time.Millisecond)
 		DumpAll(&node)
 	}
@@ -77,7 +83,6 @@ func Procedure()  {
 	for i,n:=range node{
 		if i<LEFT {
 			n.Quit()
-			log.Debug(i, " Quit")
 		}
 	}
 	time.Sleep(3*time.Second)
@@ -94,6 +99,8 @@ func MinorTest()  {
 	a.Validate(false,1)
 	b.Validate(false,2)
 	d.Validate(false,3)
+	fmt.Println(runtime.GOMAXPROCS(6))
+
 
 }
 

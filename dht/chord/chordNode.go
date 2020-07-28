@@ -68,7 +68,6 @@ func (this *ChordNode) validateSuccessor(ignoreCurrent bool) {
 	}
 	log.Trace(this.addr.Port, " validateSuccessor another branch")
 	ref := this.nodeSuccessor.Addr
-	//var warehouse [ALTERNATIVE_SIZE]Address
 	var addr Address
 	this.alternativeListLock.RLock()
 	for _, addr = range this.alternativeSuccessors {
@@ -80,10 +79,7 @@ func (this *ChordNode) validateSuccessor(ignoreCurrent bool) {
 		addr.Validate(true, this.addr.Port)
 		log.Trace(this.addr.Port, " go")
 		if this.Ping(addr.Addr) {
-			//addr.Validate(true, this.addr.Port)
-			//if err := RemoteCall(addr, "RPCWrapper.CopyList", 0, &warehouse); err == nil {
 			goto done
-			//}
 		}
 	}
 	this.alternativeListLock.RUnlock()
@@ -91,13 +87,13 @@ func (this *ChordNode) validateSuccessor(ignoreCurrent bool) {
 	return
 	//panic(errors.New("NO VALID SUCCESSOR!!!"))
 done:
+	log.Trace(this.addr.Port, " may done")
 	this.MayFatal()
 	for _, v := range this.alternativeSuccessors {
 		v.Validate(false, this.addr.Port)
 	}
 	this.alternativeListLock.RUnlock()
 	log.Trace(this.addr.Port, " alternative passed")
-	addr.Validate(true, this.addr.Port)
 	log.Debug(this.addr.Port, " validate set successor:", addr.Port)
 	this.fingerAndSuccessorLock.Lock()
 	this.nodeSuccessor.CopyFrom(&addr)
@@ -109,14 +105,7 @@ done:
 	pc, _, _, _ := runtime.Caller(1)
 	callerName := runtime.FuncForPC(pc).Name()
 	log.Trace(this.addr.Port, " father ", callerName)
-	//this.alternativeListLock.Lock()
-	//for i := 0; i < ALTERNATIVE_SIZE; i++ {
-	//	this.alternativeSuccessors[i].CopyFrom(&warehouse[i])
-	//	this.alternativeSuccessors[i].Validate(false, "afterward failure")
-	//}
-	//this.alternativeListLock.Unlock()
 	this.UpdateAlternativeSuccessor()
-	this.nodeSuccessor.Validate(false, "GEEZ")
 	log.Trace(this.addr.Port, " alternative copy done")
 	this.MayFatal()
 	log.Trace(this.addr.Port, " validating return")
@@ -254,6 +243,7 @@ func (this *ChordNode) CheckPredecessor() {
 func (this *ChordNode) UpdateAlternativeSuccessor() {
 	log.Trace(GOid(), this.addr.Port, " check alternative successor")
 	var warehouse [ALTERNATIVE_SIZE]Address
+
 	if this.addr.Addr != this.nodeSuccessor.Addr {
 		if RemoteCall(*this.nodeSuccessor, "RPCWrapper.CopyList", 0, &warehouse)!=nil{
 			return

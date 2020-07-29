@@ -52,9 +52,9 @@ func (this *ChordNode) RunDaemon() {
 			this.lis.Close()
 			log.Debug(this.addr.Port, " Daemon Quited.")
 		}()
-		//counter:=0
+		counter:=0
 		for {
-			//counter=(counter+1)%2
+			counter=(counter+1)%4
 			time.Sleep(time.Duration(UPDATE_INTERVAL) * time.Millisecond)
 			select {
 			case <-this.DaemonContext.Done():
@@ -68,9 +68,9 @@ func (this *ChordNode) RunDaemon() {
 				this.MayFatal()
 				Must(this.FixFingers())
 				this.MayFatal()
-				//if counter==0 {
+				if counter==0 {
 					this.UpdateAlternativeSuccessor()
-				//}
+				}
 				log.Debug(this.addr.Port, " Daemon Slept")
 				//this.Dump(2)
 			}

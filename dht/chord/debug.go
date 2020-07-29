@@ -13,12 +13,13 @@ func (this *ChordNode) Dump(verbose int) {
 	//for i, _ := range s {
 	//	s[i] = this.finger[i].Port
 	//}
-	log.WithFields(log.Fields{
-		"Addr":        this.addr.Port,
-		"Successor":   this.nodeSuccessor.Port,
-		"Predecessor": this.nodePredecessor.Port,
-		//"Finger":      s,
-	}).Info("[DUMP]\n")
+	//log.WithFields(log.Fields{
+	//	"Addr":        this.addr.Port,
+	//	"Successor":   this.nodeSuccessor.Port,
+	//	"Predecessor": this.nodePredecessor.Port,
+	//	"Finger":      s,
+	//}).Info("[DUMP]")
+	log.Info("[DUMP] addr:",this.addr.Port," predecessor:",this.nodePredecessor.Port," successor:",this.nodeSuccessor.Port)
 	//if this.nodeSuccessor.Port!=0 {
 	//	this.MayFatal()
 	//}

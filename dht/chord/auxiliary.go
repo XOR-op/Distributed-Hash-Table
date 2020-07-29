@@ -50,7 +50,7 @@ func Dial(method, addr string) (*rpc.Client, error) {
 		// avoid "resource temporarily unavailable" error
 		if terr, ok := err.(TemporaryError); ok && terr.Temporary() {
 			pc, _, _, _ := runtime.Caller(1)
-			log.Warning("[WARNING] Dial ", method,
+			log.Warning("Dial ", method,
 				" from ", runtime.FuncForPC(pc).Name(), " to ", addr, " resource unavailable")
 			time.Sleep(time.Duration(retry_cnt) * 50 * time.Millisecond)
 			client, err = rpc.Dial("tcp", addr)

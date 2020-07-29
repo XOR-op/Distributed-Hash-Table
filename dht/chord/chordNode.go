@@ -13,7 +13,7 @@ import (
 const (
 	BIT_WIDTH        int = 160
 	ALTERNATIVE_SIZE int = 5
-	UPDATE_INTERVAL  int = 200
+	UPDATE_INTERVAL  int = 300
 )
 
 type ChordNode struct {
@@ -159,13 +159,13 @@ func (this *ChordNode) FindIdSuccessor(id Identifier, reply *Address) (err error
 		backup.Nullify()
 		backup.CopyFrom(this.nodeSuccessor)
 		for !stru.Stat {
-			//todo retry
 			log.Trace(this.addr.Port, " Sub loop")
-			// copy for debug only
-			var tmpAddr Address
-			tmpAddr.CopyFrom(&stru.Addr)
-			if cerr := RemoteCall(tmpAddr, "RPCWrapper.FindIDSuccessor", id, &stru); cerr != nil {
+			var calleeAddr Address
+			calleeAddr.CopyFrom(&stru.Addr)
+			if cerr := RemoteCall(calleeAddr, "RPCWrapper.FindIDSuccessor", id, &stru); cerr != nil {
+				// callee fail
 				if stru.Addr.Addr == backup.Addr {
+					// restart lookup procedure
 					this.validateSuccessor(false)
 					backup.CopyFrom(this.nodeSuccessor)
 				}

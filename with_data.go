@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	NodeSize = 70
+	NodeSize = 120
 	DataSize = 3000
-	NodeLeft = 70
+	NodeLeft = 120
 )
 
 func NodeAnswerDumpAll(node *[NodeSize]dhtNode) {
@@ -104,6 +104,7 @@ func BigProcedure() {
 		if !stat || ans != data[s] {
 			log.Warning("[KEY FIND FAILED] ", stat, " key:", s, " want:", data[s], " wrong:", ans)
 		}
+		time.Sleep(20*time.Millisecond)
 	}
 	for i:=0;i<NodeSize;i++{
 		node[i].DataDump()

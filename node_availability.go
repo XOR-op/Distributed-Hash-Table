@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	easy_formatter "github.com/t-tomalak/logrus-easy-formatter"
 	"os"
 	"strconv"
 	"strings"
@@ -34,12 +35,12 @@ func Procedure()  {
 			panic(err)
 		}
 	}()
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
+	log.SetFormatter(&easy_formatter.Formatter{
+		TimestampFormat: "2006-01-02 15:04:05.000",
+		LogFormat:       "[%lvl%]: %time% - %msg%\n",
 	})
-	//log.SetLevel(log.InfoLevel)
-	log.SetLevel(log.TraceLevel)
-	log.SetFormatter(&log.TextFormatter{})
+	log.SetLevel(log.InfoLevel)
+	//log.SetLevel(log.TraceLevel)
 	if true{
 	//if false{
 		f, err := os.OpenFile("log/log_"+strings.ReplaceAll(time.Now().Format(time.Stamp)," ","-")+".log", os.O_WRONLY|os.O_CREATE, 0644)
@@ -112,7 +113,7 @@ func MinorTest()  {
 }
 
 func main()  {
-	//Procedure()
-	BigProcedure()
+	Procedure()
+	//BigProcedure()
 	//MinorTest()
 }

@@ -18,26 +18,31 @@ func (this *ChordNode) RPCPredecessor(reply *Address)error  {
 	this.predecessorLock.RLock()
 	reply.CopyFrom(&this.nodePredecessor)
 	this.predecessorLock.RUnlock()
-	reply.Validate(false,"RPCPredecessor")
+	//reply.Validate(false,"RPCPredecessor")
 	return nil
+}
+
+func (this *ChordNode) RPCFindIDSuccessorWithValidation(id Identifier,reply *AddressWithBoolean)error  {
+	this.validateSuccessor(false)
+	return this.RPCFindIDSuccessor(id,reply)
 }
 
 func (this *ChordNode) RPCFindIDSuccessor(id Identifier,reply *AddressWithBoolean) error{
 	log.Trace(this.addr.Port," [RPC] invoked of RPCFindIDSuccessor(",id,")")
-	this.MayFatal()
+	//this.MayFatal()
 	this.validateSuccessor(false)
 	this.fingerAndSuccessorLock.RLock()
 	rep:=id.InRightClosure(&this.addr.Id,&this.nodeSuccessor.Id)
 	this.fingerAndSuccessorLock.RUnlock()
 	if rep{
 		*reply=NewAddressWithBoolean(this.nodeSuccessor,true)
-		reply.Addr.Validate(false,"RPCFindIDSuccessor true branch")
+		//reply.Addr.Validate(false,"RPCFindIDSuccessor true branch")
 		return nil
 	}else {
 		*reply=NewAddressWithBoolean(this.closestPrecedingNode(id),false)
 		log.Trace(this.addr.Port," [RPC] invoked of RPCFindIDSuccessor AND Next:",reply.Addr.Port," sha1:",reply.Addr.Id.ValPtr)
-		this.addr.Validate(false,"RPCFindIDSuccessor false branch 1")
-		reply.Addr.Validate(false,"RPCFindIDSuccessor false branch 2")
+		//this.addr.Validate(false,"RPCFindIDSuccessor false branch 1")
+		//reply.Addr.Validate(false,"RPCFindIDSuccessor false branch 2")
 		return nil
 	}
 }

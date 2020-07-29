@@ -89,6 +89,16 @@ func (this *Address)Validate(willLog bool,whoami interface{})  {
 	}
 }
 
+func (this *ChordNode)DataDump(){
+	this.storage.lock.Lock()
+	defer this.storage.lock.Unlock()
+	log.Info("From {",this.addr.Port,"}'s data:")
+	for k,v:=range this.storage.Storage {
+		log.Info("Key:",k," ,value:",v)
+	}
+	log.Info("{",this.addr.Port,"} done")
+}
+
 
 
 func GOid() string {

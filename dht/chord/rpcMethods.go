@@ -42,17 +42,17 @@ func (this *ChordNode) RPCFindIDSuccessor(id Identifier,reply *AddressWithBoolea
 	}
 }
 
-func (this *ChordNode) RPCNotify(callee Address)error  {
+func (this *ChordNode) RPCNotify(caller Address)error  {
 	this.notifyLock.Lock()
 	defer this.notifyLock.Unlock()
-	log.Trace(this.addr.Port," [RPC] invoked of RPCNotify(",callee.Addr,")")
+	log.Trace(this.addr.Port," [RPC] invoked of RPCNotify(", caller.Addr,")")
 	this.predecessorLock.Lock()
 	defer this.predecessorLock.Unlock()
-	if this.nodePredecessor.isNil() || callee.Id.In(&this.nodePredecessor.Id,&this.addr.Id){
-		log.Debug(this.addr.Port,": postPre:",this.nodePredecessor.Port," new:",callee)
-		this.nodePredecessor=callee
+	if this.nodePredecessor.isNil() || caller.Id.In(&this.nodePredecessor.Id,&this.addr.Id){
+		log.Debug(this.addr.Port,": postPre:",this.nodePredecessor.Port," new:", caller)
+		this.nodePredecessor.CopyFrom(&caller)
 	}
-	callee.Validate(false,"RPCNotify")
+	caller.Validate(false,"RPCNotify")
 	return nil
 }
 
@@ -73,3 +73,45 @@ func (this *ChordNode)RPCCopyList(reply *[ALTERNATIVE_SIZE]Address)error  {
 	return nil
 }
 
+func (this *ChordNode)RPCPut(kv KVPair,stat *bool)error{
+	*stat=this.storage.Put(kv.Key,kv.Value)
+	return nil
+}
+
+func (this *ChordNode)RPCGet(key string,reply *StringWithBoolean)error{
+	log.Debug(this.addr.Port," try to find Key:",key)
+	reply.Stat=this.storage.Get(key,&reply.Str)
+	return nil
+}
+
+func (this *ChordNode)RPCDelete(key string,stat *bool)error{
+	*stat=this.storage.Delete(key)
+	return nil
+}
+
+func (this *ChordNode)RPCCopyFingers(_ int,reply *[BIT_WIDTH]Address)error{
+	// todo
+	return nil
+}
+
+func (this *ChordNode)RPCUpdatePredecessor(addr [2]Address,_ *int)error  {
+	// {caller,caller.predecessor}
+	this.predecessorLock.Lock()
+	defer this.predecessorLock.Unlock()
+	if addr[0].Addr==this.nodePredecessor.Addr{
+		log.Debug(this.addr.Port,": postPre:",this.nodePredecessor.Port," new:", addr[1])
+		this.nodePredecessor.CopyFrom(&addr[1])
+	}
+	return nil
+}
+
+func (this *ChordNode)RPCUpdateSuccessor(addr [2]Address,_ *int)error {
+	// {caller,caller.predecessor}
+	this.fingerAndSuccessorLock.Lock()
+	defer this.fingerAndSuccessorLock.Unlock()
+	if addr[0].Addr == this.nodeSuccessor.Addr {
+		log.Debug(this.addr.Port, ": postSuc:", this.nodeSuccessor.Port, " new:", addr[1])
+		this.nodeSuccessor.CopyFrom(&addr[1])
+	}
+	return nil
+}

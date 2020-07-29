@@ -45,15 +45,15 @@ func (this Node)Ping(addr string)bool  {
 
 
 func (this Node) Put(key, value string) bool {
-	return false
+	return this.N.Put(key,value)
 }
 
 func (this Node) Get(key string) (bool, string) {
-	return false,""
+	return this.N.Get(key)
 }
 
 func (this Node) Delete(key string) bool {
-	return false
+	return this.N.Delete(key)
 }
 
 func (this Node) Dump(verbose int) {
@@ -61,4 +61,8 @@ func (this Node) Dump(verbose int) {
 }
 func (this Node) AnswerDump() {
 	this.N.AnswerDump()
+}
+
+func (this Node) DataDump() {
+	this.N.DataDump()
 }

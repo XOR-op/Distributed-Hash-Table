@@ -35,6 +35,7 @@ func (this *Identifier) InLeftClosure(low, high *Identifier) bool {
 	return low.ValPtr.Cmp(this.ValPtr) == 0 || this.In(low, high)
 }
 
+
 func (this *Identifier) PlusTwoPower(exp uint) Identifier {
 	y := big.NewInt(1)
 	y.Lsh(y,exp)
@@ -65,10 +66,9 @@ func IDlize(s string) (ret Identifier) {
 }
 
 type Address struct {
-	Addr string // "host:Port"
+	Addr string // "host:port"
 	Port int
 	Id   Identifier
-	//lock *sync.Mutex
 }
 
 func (this *Address) isNil() bool {
@@ -78,17 +78,12 @@ func (this *Address) Nullify()  {
 	this.Addr =""
 	this.Port=0
 	this.Id.ValPtr=nil
-	//this.lock=new(sync.Mutex)
 }
 
 func (this *Address)CopyFrom(addr *Address)  {
-	//this.lock.Lock()
-	//addr.lock.Lock()
 	this.Addr=addr.Addr
 	this.Port=addr.Port
 	this.Id.CopyFrom(&addr.Id)
-	//this.lock.Unlock()
-	//addr.lock.Unlock()
 	//log.Trace("COPY trace:",this.Port," with sha1 ",this.Id)
 	//log.Trace("COPY trace original :",addr.Port," with sha1 ",addr.Id)
 }
@@ -97,7 +92,6 @@ func NewAddress(addr string)(reply Address)  {
 	reply.Addr =addr
 	reply.Id =IDlize(addr)
 	reply.Port, _ =strconv.Atoi(strings.Split(addr,":")[1])
-	//reply.lock=new(sync.Mutex)
 	return
 }
 
@@ -112,4 +106,9 @@ func NewAddressWithBoolean(addr *Address,stat bool)AddressWithBoolean  {
 	stru.Addr.CopyFrom(addr)
 	stru.Stat=stat
 	return stru
+}
+
+type StringWithBoolean struct {
+	Str string
+	Stat bool
 }

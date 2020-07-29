@@ -20,13 +20,12 @@ type TemporaryError interface {
 	Temporary() bool
 }
 
-
 func RemoteCall(addr Address, method string, arg, ret interface{}) (err error) {
 	defer func() {
 		if t := recover(); t != nil {
 			pc, _, _, _ := runtime.Caller(3)
 			log.Warning("[ERROR] RemoteCall ", method,
-				" from ", runtime.FuncForPC(pc).Name()," to ", addr.Addr, " fail:", t)
+				" from ", runtime.FuncForPC(pc).Name(), " to ", addr.Addr, " fail:", t)
 			err = t.(error)
 		}
 	}()
@@ -45,16 +44,28 @@ func RemoteCall(addr Address, method string, arg, ret interface{}) (err error) {
 	return
 }
 
-func Dial(method,addr string)(*rpc.Client,error)  {
-	client,err:=rpc.Dial(method,addr)
-	for retry_cnt:=1;err!=nil && retry_cnt<=4;retry_cnt++{
+func Dial(method, addr string) (*rpc.Client, error) {
+	client, err := rpc.Dial(method, addr)
+	for retry_cnt := 1; err != nil && retry_cnt <= 4; retry_cnt++ {
 		// avoid "resource temporarily unavailable" error
-		if terr,ok:=err.(TemporaryError);ok&&terr.Temporary() {
-			time.Sleep(time.Duration(retry_cnt)*30 * time.Millisecond)
+		if terr, ok := err.(TemporaryError); ok && terr.Temporary() {
+			pc, _, _, _ := runtime.Caller(1)
+			log.Warning("[WARNING] Dial ", method,
+				" from ", runtime.FuncForPC(pc).Name(), " to ", addr, " resource unavailable")
+			time.Sleep(time.Duration(retry_cnt) * 50 * time.Millisecond)
 			client, err = rpc.Dial("tcp", addr)
-		}else {
+		} else {
 			break
 		}
 	}
-	return client,err
+	return client, err
+}
+
+func (this *ChordNode)RecoverErr(errPtr *error) {
+	if t := recover(); t != nil {
+		*errPtr = t.(error)
+		log.Warn(this.addr.Port, " Catch panic:", *errPtr)
+	}else {
+		*errPtr=nil
+	}
 }

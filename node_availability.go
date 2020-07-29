@@ -1,18 +1,17 @@
 package main
 
 import (
-	"DHT/dht/chord"
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const N int =120
-const LEFT int=50
+const LEFT int=70
 
 func DumpAll(node *[N]dhtNode)  {
 	log.Println("**********DUMP BEGIN************")
@@ -63,11 +62,11 @@ func Procedure()  {
 			n.Create()
 		}else {
 			n.Join("localhost:"+strconv.Itoa(startPort))
-			time.Sleep(1000*time.Millisecond)
+			time.Sleep(500*time.Millisecond)
 		}
 		DumpAll(&node)
 	}
-	time.Sleep(1*time.Second)
+	time.Sleep(5*time.Second)
 	log.Info("=== All nodes joined ===")
 	for i:=N-1;i>=LEFT;i--{
 		log.Debug(i,"?")
@@ -89,22 +88,31 @@ func Procedure()  {
 	log.Info("All process finished")
 }
 
+func Logg(err *error)  {
+	if t:=recover();t!=nil{
+		fmt.Println(t.(error))
+		*err=t.(error)
+	}else {
+		*err = nil
+	}
+}
+
+func small()(err error)  {
+	defer Logg(&err)
+	fmt.Println("1")
+	fmt.Println("2")
+	panic(errors.New("Hello"))
+	fmt.Println("3")
+	fmt.Println("4")
+	return nil
+}
+
 func MinorTest()  {
-	a:=chord.NewAddress("localhost:1234")
-	b:=chord.NewAddress("localhost:1235")
-	//c:=chord.NewAddress("localhost:1236")
-	d:=new(chord.Address)
-	d.CopyFrom(&a)
-	a.CopyFrom(&b)
-	a.Validate(false,1)
-	b.Validate(false,2)
-	d.Validate(false,3)
-	fmt.Println(runtime.GOMAXPROCS(6))
-
-
+	fmt.Println(small())
 }
 
 func main()  {
-	Procedure()
+	//Procedure()
+	BigProcedure()
 	//MinorTest()
 }

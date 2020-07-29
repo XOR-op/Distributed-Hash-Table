@@ -33,5 +33,6 @@ type dhtNode interface {
 	/* Return "true" if remove successfully, "false" otherwise. */
 	Dump(verbose int)
 	AnswerDump()
+	DataDump()
 	/* For debugging only */
 }

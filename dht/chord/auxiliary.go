@@ -18,6 +18,7 @@ func Must(err error) bool {
 
 type TemporaryError interface {
 	Temporary() bool
+
 }
 
 func RemoteCall(addr Address, method string, arg, ret interface{}) (err error) {

@@ -146,7 +146,7 @@ func (this *ChordNode) FindIdSuccessor(id Identifier, reply *Address) (err error
 	this.MayFatal()
 	if id.InRightClosure(&this.addr.Id, &this.nodeSuccessor.Id) {
 		log.Trace(GOid(), this.addr.Port, " First branch")
-		//this.validateSuccessor(false)
+		this.validateSuccessor(false)
 		this.fingerAndSuccessorLock.RLock()
 		log.Trace(GOid(), this.addr.Port, " locally get ID ", id, "'s successor:", this.nodeSuccessor.Port)
 		reply.CopyFrom(this.nodeSuccessor)

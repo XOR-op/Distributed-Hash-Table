@@ -38,3 +38,11 @@ func (this *ChordNode)SplitBy(caller Address,reply *map[string]string)error  {
 	*reply=this.storage.SplitBy(&caller.Id,&this.addr.Id)
 	return nil
 }
+
+func (this *ChordNode)BackupStorage(reply *map[string]string)error  {
+	log.Trace(this.addr.Port," [RPC] invoked of BackupStorage()")
+	this.storage.lock.RLock()
+	defer this.storage.lock.RUnlock()
+	*reply=this.storage.Storage
+	return nil
+}

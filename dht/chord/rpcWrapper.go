@@ -58,3 +58,8 @@ func (this *RPCWrapper)MoveData(caller Address,reply *map[string]string)(err err
 	defer this.Node.RecoverErr(&err)
 	return this.Node.SplitBy(caller,reply)
 }
+
+func (this *RPCWrapper)BackupStorage(_ int,reply *map[string]string)(err error)  {
+	defer this.Node.RecoverErr(&err)
+	return this.Node.BackupStorage(reply)
+}

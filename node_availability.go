@@ -51,7 +51,6 @@ func Procedure()  {
 		log.SetOutput(f)
 	}
 	log.Info("Current Program with ",N, " Node")
-	//log.SetReportCaller(true)
 	node:=[N]dhtNode{}
 	startPort:=13301
 	for i,port:=0,startPort;i<N;i,port=i+1,port+1{
@@ -113,7 +112,7 @@ func MinorTest()  {
 }
 
 func main()  {
-	Procedure()
-	//BigProcedure()
+	//Procedure()
+	BigProcedure()
 	//MinorTest()
 }

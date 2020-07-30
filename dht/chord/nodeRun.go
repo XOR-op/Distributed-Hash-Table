@@ -136,7 +136,7 @@ func (this *ChordNode) ForceQuit() {
 	this.quitRPC <- true
 	log.Debug(this.addr.Port," quit half")
 	this.quitDaemonInvoker()
-	log.Debug(this.addr.Port," has been forced quited")
+	log.Info(this.addr.Port," has been forced quited")
 }
 
 func (this *ChordNode) Quit() {

@@ -19,6 +19,11 @@ func (this *RPCWrapper) FindIDSuccessor(id Identifier,reply *AddressWithBoolean)
 	err=this.Node.RPCFindIDSuccessor(id,reply)
 	return
 }
+func (this *RPCWrapper) FindIDSuccessorWithValidation(id Identifier,reply *AddressWithBoolean)(err error) {
+	defer this.Node.RecoverErr(&err)
+	err = this.Node.RPCFindIDSuccessorWithValidation(id, reply)
+	return
+}
 
 func (this *RPCWrapper) Notify(callee Address,_ *int) (err error)  {
 	defer this.Node.RecoverErr(&err)

@@ -11,7 +11,7 @@ import (
 
 const (
 	NodeSize = 120
-	DataSize = 3000
+	DataSize = 1200
 	NodeLeft = 120
 )
 
@@ -62,8 +62,7 @@ func BigProcedure() {
 		defer f.Close()
 		log.SetOutput(f)
 	}
-	log.Info("Current Program with ", NodeSize, " Node")
-	//log.SetReportCaller(true)
+	log.Info("@Current Program with ", NodeSize, " Node, ",NodeLeft, " Node Left, ",DataSize," Data.")
 	node := [NodeSize]dhtNode{}
 	data := GetData()
 	startPort := 13301
@@ -78,7 +77,6 @@ func BigProcedure() {
 			node[i].Join("localhost:" + strconv.Itoa(startPort))
 			time.Sleep(500 * time.Millisecond)
 		}
-		//DumpNodeAll(&node)
 	}
 	time.Sleep(2 * time.Second)
 
@@ -93,7 +91,6 @@ func BigProcedure() {
 	for i := NodeSize / 2; i < NodeSize; i++ {
 		node[i].Join("localhost:" + strconv.Itoa(startPort))
 		time.Sleep(500 * time.Millisecond)
-		//DumpNodeAll(&node)
 	}
 
 	time.Sleep(2 * time.Second)

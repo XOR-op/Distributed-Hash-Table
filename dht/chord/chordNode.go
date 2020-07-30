@@ -164,13 +164,21 @@ func (this *ChordNode) FindIdSuccessor(id Identifier, reply *Address) (err error
 			calleeAddr.CopyFrom(&stru.Addr)
 			if cerr := RemoteCall(calleeAddr, "RPCWrapper.FindIDSuccessor", id, &stru); cerr != nil {
 				// callee fail
-				if stru.Addr.Addr == backup.Addr {
+				log.Warning(this.addr.Port, " fail ", calleeAddr.Port, ", has to retry ", backup.Port)
+				if calleeAddr.Addr == backup.Addr {
 					// restart lookup procedure
 					this.validateSuccessor(false)
-					backup.CopyFrom(this.nodeSuccessor)
+					return this.FindIdSuccessor(id,reply) // retry
+				}else {
+					calleeAddr.CopyFrom(&backup) // use backup to call
+					if cerr=RemoteCall(calleeAddr, "RPCWrapper.FindIDSuccessorWithValidation", id, &stru);cerr!=nil{
+						log.Warning(this.addr.Port," FindIDSuccessor failure occurred:",cerr)
+						return cerr
+					}
+					// now stru.addr is 1 step ahead of calleeAddr
 				}
-				log.Warning(this.addr.Port, " fail ", stru.Addr.Port, ", has to retry ", backup.Port)
-				stru.Addr.CopyFrom(&backup)
+			}else {
+				backup.CopyFrom(&calleeAddr)
 			}
 			log.Trace(GOid(), "cur stru.addr:", stru.Addr.Port)
 		}

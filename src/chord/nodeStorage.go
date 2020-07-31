@@ -2,37 +2,70 @@ package chord
 
 import (
 	log "github.com/sirupsen/logrus"
+	"time"
 )
+
+const RETRY_TIMEOUT = 20*time.Millisecond
 
 func (this *ChordNode) Put(key, value string) (ret bool) {
 	var addr Address
-	Must(this.FindIdSuccessor(IDlize(key), &addr))
-	if err := RemoteCall(addr, "RPCWrapper.Put", KVPair{key, value}, &ret); err != nil {
-		log.Warning(this.addr.Port, " Put pair {", key, ":", value, "} failed")
-		return false
+	var err error
+	for i:=0;i<3;i++ {
+		err=this.FindIdSuccessor(IDlize(key), &addr)
+		if err!=nil{
+			time.Sleep(RETRY_TIMEOUT)
+			continue
+		}
+		if err = RemoteCall(addr, "RPCWrapper.Put", KVPair{key, value}, &ret); err != nil {
+			this.validateSuccessor(false)
+			continue
+		}else {
+			return
+		}
 	}
-	return
+	log.Warning(this.addr.Port, " Put pair {", key, ":", value, "} failed:",err)
+	return false
 }
 
 func (this *ChordNode) Get(key string) (ret bool, value string) {
 	var addr Address
 	var reply StringWithBoolean
-	Must(this.FindIdSuccessor(IDlize(key), &addr))
-	if err := RemoteCall(addr, "RPCWrapper.Get", key, &reply); err != nil {
-		log.Warning(this.addr.Port, " Get Key{", key, "} failed")
-		return false, "ERROR OCCURRED"
+	var err error
+	for i:=0;i<3;i++ {
+		err=this.FindIdSuccessor(IDlize(key), &addr)
+		if err!=nil{
+			time.Sleep(RETRY_TIMEOUT)
+			continue
+		}
+		if err = RemoteCall(addr, "RPCWrapper.Get", key, &reply); err != nil {
+			this.validateSuccessor(false)
+			continue
+		}else {
+			return reply.Stat, reply.Str
+		}
 	}
-	return reply.Stat, reply.Str
+	log.Warning(this.addr.Port, " Get Key{", key, "} failed:",err)
+	return false, err.Error()
 }
 
 func (this *ChordNode) Delete(key string) (ret bool) {
 	var addr Address
-	Must(this.FindIdSuccessor(IDlize(key), &addr))
-	if err := RemoteCall(addr, "RPCWrapper.Delete", key, &ret); err != nil {
-		log.Warning(this.addr.Port, " Delete Key{", key, "} failed")
-		return false
+	var err error
+	for i:=0;i<3;i++ {
+		err=this.FindIdSuccessor(IDlize(key), &addr)
+		if err!=nil{
+			time.Sleep(RETRY_TIMEOUT)
+			continue
+		}
+		if err = RemoteCall(addr, "RPCWrapper.Delete", key, &ret); err != nil {
+			this.validateSuccessor(false)
+			continue
+		}else {
+			return
+		}
 	}
-	return
+	log.Warning(this.addr.Port, " Delete Key{", key, "} failed:",err)
+	return false
 }
 
 func (this *ChordNode) MoveData(caller Address, reply *map[string]string) (err error) {

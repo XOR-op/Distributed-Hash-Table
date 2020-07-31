@@ -94,5 +94,6 @@ func main()  {
 	//BigProcedure()
 	//MinorTest()
 	//naiveTest()
-	standardTest()
+	//standardTest()
+	advancedTest()
 }

@@ -22,7 +22,7 @@ type ChordNode struct {
 	server                 *rpc.Server
 	lis                    net.Listener
 	quitRPC                chan bool
-	DaemonContext          context.Context
+	daemonContext          context.Context
 	quitDaemonInvoker      context.CancelFunc
 	nodeSuccessor          *Address
 	nodePredecessor        Address
@@ -36,14 +36,17 @@ type ChordNode struct {
 	notifyLock             sync.Mutex
 	joinLock               sync.Mutex
 	storage                *Table
+	succStorageBackup      *Table
 }
 
 func (this *ChordNode) Init(port int) {
 	this.addr.Addr = "localhost:" + strconv.Itoa(port)
 	this.addr.Port = port
 	this.addr.Id = IDlize(this.addr.Addr)
-	this.storage=new(Table)
-	this.storage.Storage=make(map[string]string)
+	this.storage = new(Table)
+	this.storage.Storage = make(map[string]string)
+	this.succStorageBackup = new(Table)
+	this.succStorageBackup.Storage = make(map[string]string)
 	this.nodeSuccessor = &this.finger[0]
 	for i, _ := range this.finger {
 		this.finger[i].Nullify()
@@ -109,6 +112,15 @@ done:
 	log.Trace(this.addr.Port, " father ", callerName)
 	this.UpdateAlternativeSuccessor()
 	log.Trace(this.addr.Port, " alternative copy done")
+	// storage synchronization
+	log.Debug(this.addr.Port, " backup ", this.nodeSuccessor.Port)
+	tmpMap := make(map[string]string)
+	Must(RemoteCall(*this.nodeSuccessor, "RPCWrapper.GetStorage", 0, &tmpMap))
+	log.Debug(this.addr.Port, " update ", this.nodeSuccessor.Port)
+	this.succStorageBackup.lock.RLock()
+	Must(RemoteCall(*this.nodeSuccessor, "RPCWrapper.UpdateStorage", &this.succStorageBackup.Storage, nil))
+	this.succStorageBackup.lock.RUnlock()
+	this.succStorageBackup.Merge(&tmpMap)
 	this.MayFatal()
 	log.Trace(this.addr.Port, " validating return")
 	return
@@ -168,16 +180,16 @@ func (this *ChordNode) FindIdSuccessor(id Identifier, reply *Address) (err error
 				if calleeAddr.Addr == backup.Addr {
 					// restart lookup procedure
 					this.validateSuccessor(false)
-					return this.FindIdSuccessor(id,reply) // retry
-				}else {
+					return this.FindIdSuccessor(id, reply) // retry
+				} else {
 					calleeAddr.CopyFrom(&backup) // use backup to call
-					if cerr=RemoteCall(calleeAddr, "RPCWrapper.FindIDSuccessorWithValidation", id, &stru);cerr!=nil{
-						log.Warning(this.addr.Port," FindIDSuccessor failure occurred:",cerr)
+					if cerr = RemoteCall(calleeAddr, "RPCWrapper.FindIDSuccessorWithValidation", id, &stru); cerr != nil {
+						log.Warning(this.addr.Port, " FindIDSuccessor failure occurred:", cerr)
 						return cerr
 					}
 					// now stru.addr is 1 step ahead of calleeAddr
 				}
-			}else {
+			} else {
 				backup.CopyFrom(&calleeAddr)
 			}
 			log.Trace(GOid(), "cur stru.addr:", stru.Addr.Port)
@@ -291,11 +303,9 @@ func (this *ChordNode) Join(addr Address) (err error) {
 	client, err = Dial("tcp", this.nodeSuccessor.Addr)
 	Must(err)
 	Must(client.Call("RPCWrapper.CopyList", 0, &this.alternativeSuccessors))
+	Must(client.Call("RPCWrapper.MoveData", this.addr, &this.storage.Storage))
+	Must(client.Call("RPCWrapper.GetStorage", 0, &this.succStorageBackup.Storage))
 	Must(client.Call("RPCWrapper.Notify", this.addr, nil))
-	Must(client.Call("RPCWrapper.MoveData",this.addr,&this.storage.Storage))
-	if this.storage.Storage==nil{
-		log.Fatal("NIL MAP")
-	}
 	log.Debug(this.addr.Port, " after join. Suc:", this.nodeSuccessor.Port)
 	return
 }

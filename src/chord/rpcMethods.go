@@ -78,19 +78,49 @@ func (this *ChordNode)RPCCopyList(reply *[ALTERNATIVE_SIZE]Address)error  {
 	return nil
 }
 
-func (this *ChordNode)RPCPut(kv KVPair,stat *bool)error{
-	*stat=this.storage.Put(kv.Key,kv.Value)
-	return nil
+func (this *ChordNode)RPCPut(kv KVPair,stat *bool)(err error) {
+	log.Trace(this.addr.Port, " [RPC] invoked of Put(", kv.Key, ",", kv.Value, ")")
+	*stat = this.storage.Put(kv.Key, kv.Value)
+	var ignore bool
+	if !this.nodePredecessor.isNil() {
+		if errn := RemoteCall(this.nodePredecessor, "RPCWrapper.BackupPut", kv, &ignore); errn != nil {
+			log.Warning(this.addr.Port, " Put backup failed:", err)
+		}
+	} else {
+		log.Warning(this.addr.Port, " Cannot backup put:", kv.Key)
+	}
+	return
 }
 
 func (this *ChordNode)RPCGet(key string,reply *StringWithBoolean)error{
-	log.Debug(this.addr.Port," try to find Key:",key)
+	log.Trace(this.addr.Port," [RPC] invoked of Get(",key,")")
 	reply.Stat=this.storage.Get(key,&reply.Str)
 	return nil
 }
 
-func (this *ChordNode)RPCDelete(key string,stat *bool)error{
+func (this *ChordNode)RPCDelete(key string,stat *bool)(err error){
+	log.Trace(this.addr.Port," [RPC] invoked of Delete(",key,")")
 	*stat=this.storage.Delete(key)
+	var ignore bool
+	if !this.nodePredecessor.isNil() {
+		if errn := RemoteCall(this.nodePredecessor, "RPCWrapper.BackupDelete", key, &ignore); errn != nil {
+			log.Warning(this.addr.Port, " Delete backup failed:", err)
+		}
+	} else {
+		log.Warning(this.addr.Port, " Cannot backup delete:", key)
+	}
+	return nil
+}
+
+func (this *ChordNode)RPCBackupPut(kv KVPair,stat *bool)error{
+	log.Trace(this.addr.Port," [RPC] invoked of BackupPut(",kv.Key,",",kv.Value,")")
+	*stat=this.succStorageBackup.Put(kv.Key,kv.Value)
+	return nil
+}
+
+func (this *ChordNode)RPCBackupDelete(key string,stat *bool)error {
+	log.Trace(this.addr.Port," [RPC] invoked of BackupDelete(",key,")")
+	*stat = this.succStorageBackup.Delete(key)
 	return nil
 }
 

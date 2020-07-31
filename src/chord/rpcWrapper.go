@@ -53,13 +53,31 @@ func (this *RPCWrapper)Delete(key string,stat *bool)(err error){
 	defer this.Node.RecoverErr(&err)
 	return this.Node.RPCDelete(key,stat)
 }
+func (this *RPCWrapper)BackupPut(kv KVPair,stat *bool) (err error)  {
+	defer this.Node.RecoverErr(&err)
+	return this.Node.RPCBackupPut(kv,stat)
+}
+func (this *RPCWrapper)BackupDelete(key string,stat *bool)(err error){
+	defer this.Node.RecoverErr(&err)
+	return this.Node.RPCBackupDelete(key,stat)
+}
 
 func (this *RPCWrapper)MoveData(caller Address,reply *map[string]string)(err error)  {
 	defer this.Node.RecoverErr(&err)
-	return this.Node.SplitBy(caller,reply)
+	return this.Node.MoveData(caller,reply)
 }
 
-func (this *RPCWrapper)BackupStorage(_ int,reply *map[string]string)(err error)  {
+func (this *RPCWrapper) GetStorage(_ int,reply *map[string]string)(err error)  {
 	defer this.Node.RecoverErr(&err)
-	return this.Node.BackupStorage(reply)
+	return this.Node.GetStorage(reply)
+}
+
+func (this *RPCWrapper)UpdateStorage(data *map[string]string,_ *int)(err error)  {
+	defer this.Node.RecoverErr(&err)
+	return this.Node.UpdateStorage(data)
+}
+
+func (this *RPCWrapper)DropPartialBackup(caller Address,_ *int)(err error)  {
+	defer this.Node.RecoverErr(&err)
+	return this.Node.DropPartialBackup(caller)
 }

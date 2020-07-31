@@ -1,11 +1,10 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	easy_formatter "github.com/t-tomalak/logrus-easy-formatter"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -88,31 +87,12 @@ func Procedure()  {
 	log.Info("All process finished")
 }
 
-func Logg(err *error)  {
-	if t:=recover();t!=nil{
-		fmt.Println(t.(error))
-		*err=t.(error)
-	}else {
-		*err = nil
-	}
-}
-
-func small()(err error)  {
-	defer Logg(&err)
-	fmt.Println("1")
-	fmt.Println("2")
-	panic(errors.New("Hello"))
-	fmt.Println("3")
-	fmt.Println("4")
-	return nil
-}
-
-func MinorTest()  {
-	fmt.Println(small())
-}
 
 func main()  {
+	runtime.GOMAXPROCS(8)
 	//Procedure()
-	BigProcedure()
+	//BigProcedure()
 	//MinorTest()
+	//naiveTest()
+	standardTest()
 }

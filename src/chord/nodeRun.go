@@ -7,10 +7,11 @@ import (
 	"net"
 	"net/rpc"
 	"strconv"
+	"strings"
 	"time"
 )
 
-var exitSig =errors.New("EXIT")
+var exitSig = errors.New("EXIT")
 
 func (this *ChordNode) Create() {
 	this.nodePredecessor.Nullify()
@@ -27,7 +28,7 @@ func (this *ChordNode) RPCServe(l net.Listener) {
 		conn, err := l.Accept()
 		select {
 		case <-this.quitRPC:
-			log.Debug(this.addr.Port," RPC Normal Quit")
+			log.Debug(this.addr.Port, " RPC Normal Quit")
 			return
 		default:
 			if err != nil {
@@ -42,23 +43,23 @@ func (this *ChordNode) RPCServe(l net.Listener) {
 func (this *ChordNode) RunDaemon() {
 	go func() {
 		defer func() {
-			if t:=recover();t!=nil{
-				if t.(error)==exitSig{
-					log.Debug(this.addr.Port," Daemon Normal Quit")
-				}else {
+			if t := recover(); t != nil {
+				if t.(error) == exitSig {
+					log.Debug(this.addr.Port, " Daemon Normal Quit")
+				} else {
 					log.Warning(this.addr.Port, " ", t.(error))
 				}
 			}
 			this.lis.Close()
 			log.Debug(this.addr.Port, " Daemon Quited.")
 		}()
-		counter:=0
+		counter := 0
 		for {
-			counter=(counter+1)%4
+			counter = (counter + 1) % 4
 			time.Sleep(time.Duration(UPDATE_INTERVAL) * time.Millisecond)
 			select {
-			case <-this.DaemonContext.Done():
-				log.Debug(this.addr.Port," Daemon Normal Quit")
+			case <-this.daemonContext.Done():
+				log.Debug(this.addr.Port, " Daemon Normal Quit")
 				return
 			default:
 				log.Debug(this.addr.Port, " Daemon invoked")
@@ -68,7 +69,7 @@ func (this *ChordNode) RunDaemon() {
 				this.MayFatal()
 				Must(this.FixFingers())
 				this.MayFatal()
-				if counter==0 {
+				if counter == 0 {
 					this.UpdateAlternativeSuccessor()
 				}
 				log.Debug(this.addr.Port, " Daemon Slept")
@@ -84,31 +85,34 @@ func (this *ChordNode) Ping(addr string) bool {
 	}
 	log.Trace(this.addr.Port, " ping ", addr)
 	for i := 0; i < 3; i++ {
-		chanArrived:=make(chan error)
+		chanArrived := make(chan error)
 		go func() {
 			client, err := Dial("tcp", addr)
-			if err==nil{
+			if err == nil {
 				client.Close()
 			}
-			chanArrived<-err
+			chanArrived <- err
 		}()
 		select {
-		case <-this.DaemonContext.Done():
-			log.Debug(this.addr.Port," Ping exit")
+		case <-this.daemonContext.Done():
+			log.Debug(this.addr.Port, " Ping exit")
 			panic(exitSig)
 			return false
-		case err :=<-chanArrived:
-			if err ==nil{
+		case err := <-chanArrived:
+			if err == nil {
 				return true
-			}else {
-				if terr,ok:=err.(TemporaryError);ok&&terr.Temporary() {
-					time.Sleep(time.Duration(i+1)*30 * time.Millisecond)
+			} else {
+				if terr, ok := err.(TemporaryError); ok && terr.Temporary() {
+					time.Sleep(time.Duration(i+1) * 30 * time.Millisecond)
 					break // continue
 				}
-				log.Warning(this.addr.Port," ping with err:",err)
+				if !strings.Contains(err.Error(),"refused") {
+					// dirty handling
+					log.Warning(this.addr.Port, " ping with err:", err)
+				}
 				return false
 			}
-		case <-time.After(time.Duration(300+(i*500))*time.Millisecond):
+		case <-time.After(time.Duration(300+(i*500)) * time.Millisecond):
 			break
 		}
 	}
@@ -126,17 +130,17 @@ func (this *ChordNode) Run() {
 	}
 	this.lis = l
 	this.quitRPC = make(chan bool, 1)
-	this.DaemonContext,this.quitDaemonInvoker = context.WithCancel(context.Background())
+	this.daemonContext, this.quitDaemonInvoker = context.WithCancel(context.Background())
 	go this.RPCServe(l)
 }
 
 func (this *ChordNode) ForceQuit() {
 	// rpc server should be down
-	log.Debug(this.addr.Port," try quit")
+	log.Debug(this.addr.Port, " try quit")
 	this.quitRPC <- true
-	log.Debug(this.addr.Port," quit half")
+	log.Debug(this.addr.Port, " quit half")
 	this.quitDaemonInvoker()
-	log.Info(this.addr.Port," has been forced quited")
+	log.Info(this.addr.Port, " has been forced quited")
 }
 
 func (this *ChordNode) Quit() {

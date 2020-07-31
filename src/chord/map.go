@@ -64,3 +64,12 @@ func (this *Table)SplitBy(predecessorID,thisID *Identifier)(reply map[string]str
 	}
 	return reply
 }
+
+func (this *Table)Merge(rhs *map[string]string)  {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	for k,v:=range *rhs{
+		this.Storage[k]=v
+	}
+	*rhs=make(map[string]string)
+}

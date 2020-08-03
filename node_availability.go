@@ -4,7 +4,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	easy_formatter "github.com/t-tomalak/logrus-easy-formatter"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -88,12 +87,12 @@ func Procedure()  {
 }
 
 
-func main()  {
-	runtime.GOMAXPROCS(8)
+//func main()  {
+//	runtime.GOMAXPROCS(8)
 	//Procedure()
 	//BigProcedure()
 	//MinorTest()
 	//naiveTest()
 	//standardTest()
-	advancedTest()
-}
+	//advancedTest()
+//}

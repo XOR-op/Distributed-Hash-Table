@@ -125,7 +125,7 @@ func (this *ChordNode) Run() {
 	_ = this.server.Register(&RPCWrapper{this})
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(this.addr.Port))
 	if err != nil {
-		log.Fatal("Listen error in", this.addr.Addr)
+		log.Fatal("Listen error in", this.addr.Addr,":",err)
 		panic(err)
 	}
 	this.lis = l

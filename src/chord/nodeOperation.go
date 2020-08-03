@@ -13,7 +13,7 @@ import (
 const (
 	BIT_WIDTH        int = 160
 	ALTERNATIVE_SIZE int = 5
-	UPDATE_INTERVAL  int = 300
+	UPDATE_INTERVAL  int = 150
 )
 
 type ChordNode struct {

@@ -1,22 +1,36 @@
 package kademlia
 
-import "math/big"
+import (
+	"crypto/sha1"
+	"math/big"
+)
 
 type Identifier struct {
-	val *big.Int
+	Val *big.Int
 }
 
-func (this *Identifier)Xor(rhs Identifier) (reply Identifier) {
-	reply.val=new(big.Int)
-	reply.val.Xor(this.val,rhs.val)
+func (self Identifier)Xor(rhs Identifier) (reply Identifier) {
+	reply.Val =new(big.Int)
+	reply.Val.Xor(self.Val,rhs.Val)
 	return
 }
 
-func (this *Identifier)BitLen()int{
-	return this.val.BitLen()
+func (self Identifier)BitLen()int{
+	return self.Val.BitLen()
 }
 
-func (this *Identifier)As(rhs *Identifier)  {
-	this.val.Set(rhs.val)
+func (self *Identifier)As(rhs *Identifier)  {
+	self.Val.Set(rhs.Val)
 }
 
+func NewIdentifier(s string)(reply *Identifier)  {
+	reply=new(Identifier)
+	reply.Val=new(big.Int)
+	tmp := sha1.Sum([]byte(s))
+	reply.Val.SetBytes(tmp[:])
+	return
+}
+
+func (self Identifier)LessThan(rhs *Identifier)bool  {
+	return self.Val.Cmp(rhs.Val)<0
+}

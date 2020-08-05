@@ -55,8 +55,8 @@ func (this *ChordNode)MayFatal()  {
 			if x.isNil(){
 				return
 			}
-			if reSha1:=IDlize(x.Addr);reSha1.ValPtr.Cmp(x.Id.ValPtr)!=0{
-				log.Fatal(callerName, " from ",whoami,":this FINGER ",i,":",x.Port," Correct:",reSha1," Wrong:",x.Id)
+			if reSha1:=IDlize(x.Addr);reSha1.ValPtr.Cmp(x.ID.ValPtr)!=0{
+				log.Fatal(callerName, " from ",whoami,":this FINGER ",i,":",x.Port," Correct:",reSha1," Wrong:",x.ID)
 			}
 		}
 	}

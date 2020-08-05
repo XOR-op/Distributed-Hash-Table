@@ -1,22 +1,47 @@
 package kademlia
 
+import "sync"
+
 type KBucket struct {
-	indicator bucketNode
-	size      int
-	maxSize   int
+	lookupTable map[string]*bucketNode
+	indicator   bucketNode
+	Size        int
+	maxSize     int
+	lock        sync.RWMutex
 }
 
-func (this *KBucket) Add(addr *Contact) {
-	if this.size<this.maxSize{
-		n:=newBucketNode(addr)
-		n.attachAfter(this.VirtualNode())
-	}else {
-		n:=this.Tail().Detach()
-		if n.element.TestConn(){
-			n.attachAfter(this.VirtualNode())
-		}else {
-			n=newBucketNode(addr)
-			n.attachAfter(this.VirtualNode())
+func (self *KBucket) fill(target [K]*Contact, curIndex *int, until int) bool {
+	self.lock.RLock()
+	defer self.lock.RUnlock()
+	for iter := self.Head(); *curIndex < until && iter != self.VirtualNode(); *curIndex++ {
+		target[*curIndex] = iter.element.Duplicate()
+		iter = iter.next
+	}
+	return *curIndex == until
+}
+
+func (self *KBucket) Add(addr *Contact) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	val, ok := self.lookupTable[addr.Address]
+	if ok {
+		val.Detach()
+		val.attachAfter(self.VirtualNode())
+	} else {
+		if self.Size < self.maxSize {
+			n := newBucketNode(addr)
+			n.attachAfter(self.VirtualNode())
+			self.lookupTable[addr.Address] = n
+		} else {
+			n := self.Tail().Detach()
+			if n.element.TestConn() {
+				n.attachAfter(self.VirtualNode())
+			} else {
+				delete(self.lookupTable, n.element.Address)
+				n = newBucketNode(addr)
+				n.attachAfter(self.VirtualNode())
+				self.lookupTable[addr.Address] = n
+			}
 		}
 	}
 }
@@ -26,21 +51,21 @@ func NewKBucket(maxSize int) (reply *KBucket) {
 	reply.indicator = bucketNode{nil, nil, nil}
 	reply.indicator.prev = &reply.indicator
 	reply.indicator.next = &reply.indicator
-	reply.size = 0
+	reply.Size = 0
 	reply.maxSize = maxSize
 	return
 }
 
-func (this *KBucket) Head() *bucketNode {
-	return this.indicator.next
+func (self *KBucket) Head() *bucketNode {
+	return self.indicator.next
 }
 
-func (this *KBucket) Tail() *bucketNode {
-	return this.indicator.prev
+func (self *KBucket) Tail() *bucketNode {
+	return self.indicator.prev
 }
 
-func (this *KBucket) VirtualNode() *bucketNode {
-	return &this.indicator
+func (self *KBucket) VirtualNode() *bucketNode {
+	return &self.indicator
 }
 
 type bucketNode struct {
@@ -50,26 +75,24 @@ type bucketNode struct {
 }
 
 func newBucketNode(val *Contact) (reply *bucketNode) {
-	reply=new(bucketNode)
+	reply = new(bucketNode)
 	reply.next = nil
 	reply.prev = nil
 	reply.element = val.Duplicate()
 	return
 }
 
-func (this *bucketNode) attachAfter(n *bucketNode) {
-	this.next = n.next
-	this.prev = n
-	n.next.prev = this
-	n.next = this
+func (self *bucketNode) attachAfter(n *bucketNode) {
+	self.next = n.next
+	self.prev = n
+	n.next.prev = self
+	n.next = self
 }
 
-func (this *bucketNode) Detach()*bucketNode {
-	this.next.prev = this.prev
-	this.prev.next = this.next
-	this.next = nil
-	this.prev = nil
-	return this
+func (self *bucketNode) Detach() *bucketNode {
+	self.next.prev = self.prev
+	self.prev.next = self.next
+	self.next = nil
+	self.prev = nil
+	return self
 }
-
-

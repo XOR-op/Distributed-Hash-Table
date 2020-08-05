@@ -5,6 +5,7 @@ import (
 	easy_formatter "github.com/t-tomalak/logrus-easy-formatter"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,7 +17,7 @@ type Logger struct {
 }
 
 const (
-	defaultSkip  = 4
+	defaultSkip  = 3
 	defaultLevel = logrus.InfoLevel
 	outputToFile = true
 )
@@ -31,10 +32,10 @@ func NewLogger(info string) (reply *Logger) {
 	return
 }
 
-func DefaultInitialize(){
+func DefaultInitialize() {
 	DefaultLogger = new(Logger)
 	DefaultLogger.file = nil
-	DefaultLogger.log=&logrus.Logger{}
+	DefaultLogger.log = &logrus.Logger{}
 	DefaultLogger.log.SetFormatter(&easy_formatter.Formatter{
 		TimestampFormat: "2006-01-02 15:04:05.000",
 		LogFormat:       "[%lvl%]: %time% - %msg%\n",
@@ -58,13 +59,8 @@ func DefaultClose() {
 }
 
 func (this *Logger) Prefix() string {
-	return "[" + this.info + "] @" + GetCallerName(defaultSkip) + ":"
-}
-
-
-func GetCallerName(skip int) string {
-	pc, _, _, _ := runtime.Caller(skip)
-	return runtime.FuncForPC(pc).Name()
+	pc, _, line, _ := runtime.Caller(defaultSkip)
+	return "[" + this.info + "] >>" + runtime.FuncForPC(pc).Name() + "@line" + strconv.Itoa(line) + ": "
 }
 
 func (this *Logger) Info(args ...interface{}) {
@@ -85,4 +81,9 @@ func (this *Logger) Debug(args ...interface{}) {
 
 func (this *Logger) Trace(args ...interface{}) {
 	this.log.Trace(this.Prefix(), args)
+}
+
+func GetMyName() string {
+	pc, _, _, _ := runtime.Caller(1)
+	return runtime.FuncForPC(pc).Name()
 }

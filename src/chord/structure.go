@@ -84,8 +84,8 @@ func (this *Address)CopyFrom(addr *Address)  {
 	this.Addr=addr.Addr
 	this.Port=addr.Port
 	this.Id.CopyFrom(&addr.Id)
-	//log.Trace("COPY trace:",this.Port," with sha1 ",this.Id)
-	//log.Trace("COPY trace original :",addr.Port," with sha1 ",addr.Id)
+	//log.Trace("COPY trace:",this.Port," with sha1 ",this.ID)
+	//log.Trace("COPY trace original :",addr.Port," with sha1 ",addr.ID)
 }
 
 func NewAddress(addr string)(reply Address)  {

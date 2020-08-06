@@ -40,3 +40,12 @@ func (self *RoutingTable) UpdateContact(addr *Contact) {
 	bucketID := addr.ID.Xor(*self.selfIDRef).BitLen() - 1
 	self.elements[bucketID].Add(addr)
 }
+
+func NewRoutingTable(id *Identifier)(reply *RoutingTable)  {
+	reply=new(RoutingTable)
+	reply.selfIDRef=id
+	for i,_:=range reply.elements{
+		reply.elements[i]=NewKBucket(K)
+	}
+	return
+}

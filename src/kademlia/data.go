@@ -50,3 +50,8 @@ func (self *Storage)Expire(){
 		delete(self.expireTable,k)
 	}
 }
+
+func NewStorage() (reply *Storage) {
+	reply=new(Storage)
+	return
+}

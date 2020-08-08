@@ -34,7 +34,7 @@ func main()  {
 		arr[nodeCur].Store(gen(i))
 	}
 	kademlia.DefaultLogger.Info("Store done")
-	time.Sleep(time.Second)
+	time.Sleep(2*time.Second)
 	for i:=0;i<kadDataN;i++{
 		k,v:=gen(i)
 		nodeCur=(nodeCur+i^2)%kadNodeN
@@ -49,10 +49,11 @@ func main()  {
 				kademlia.DefaultLogger.Warning("not compatible:[",k,":",v,"],wrong:",val)
 			}
 		}
+		time.Sleep(50*time.Millisecond)
 	}
 	for i:=10;i<15;i++{
 		arr[i].Quit()
-		time.Sleep(30*time.Millisecond)
+		time.Sleep(200*time.Millisecond)
 	}
 	time.Sleep(time.Second)
 	for i:=kadDataN-1;i>=0;i--{
@@ -69,6 +70,7 @@ func main()  {
 				kademlia.DefaultLogger.Warning("not compatible:[",k,":",v,"],wrong:",val)
 			}
 		}
+		time.Sleep(50*time.Millisecond)
 	}
 	kademlia.DefaultLogger.Info("Get done")
 	for i:=0;i<kadNodeN;i++{

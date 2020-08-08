@@ -2,12 +2,13 @@ package chord
 
 import (
 	"context"
-	"github.com/sasha-s/go-deadlock"
 	log "github.com/sirupsen/logrus"
 	"net"
 	"net/rpc"
 	"runtime"
 	"strconv"
+	"sync"
+
 	//"sync"
 )
 
@@ -30,13 +31,13 @@ type ChordNode struct {
 	nodePredecessor        Address
 	fingerUpdateIndex      int
 	alternativeSuccessors  [ALTERNATIVE_SIZE]Address
-	fingerAndSuccessorLock deadlock.RWMutex
-	predecessorLock        deadlock.RWMutex
-	alternativeListLock    deadlock.RWMutex
-	dataLock               deadlock.Mutex
-	validateSuccessorLock  deadlock.Mutex
-	notifyLock             deadlock.Mutex
-	joinLock               deadlock.Mutex
+	fingerAndSuccessorLock sync.RWMutex
+	predecessorLock        sync.RWMutex
+	alternativeListLock    sync.RWMutex
+	dataLock               sync.Mutex
+	validateSuccessorLock  sync.Mutex
+	notifyLock             sync.Mutex
+	joinLock               sync.Mutex
 	storage                *Table
 	succStorageBackup      *Table
 }

@@ -10,10 +10,10 @@ func Triple(condition bool, a, b interface{}) interface{} {
 type FindStat int
 
 const (
-	FindFail      = 0
-	FindEnough    = 1
-	FindNotEnough = 2
-	FindValue     = 3
+	FindFail      FindStat = 0
+	FindEnough    FindStat = 1
+	FindNotEnough FindStat = 2
+	FindValue     FindStat = 3
 )
 
 type FindNodeRequest struct {
@@ -24,9 +24,9 @@ type FindNodeRequest struct {
 type FindNodeResponse struct {
 	Stat   FindStat
 	Auth   *Contact
-	KNodes [K]*Contact
+	KNodes []*Contact
 	Amount int
-	err    error
+	Err    error
 }
 
 type FindValueRequest struct {
@@ -38,10 +38,10 @@ type FindValueRequest struct {
 type FindValueResponse struct {
 	Stat   FindStat
 	Auth   *Contact
-	KNodes *[K]*Contact
+	KNodes []*Contact
 	Amount int
-	Value  *string
-	err    error
+	Value  string
+	Err    error
 }
 
 type PingRequest struct {
@@ -51,4 +51,12 @@ type PingRequest struct {
 type StoreRequest struct {
 	Key, Value string
 	Auth       *Contact
+	original   bool
+}
+
+func min(i, j int) int {
+	if i < j {
+		return i
+	}
+	return j
 }

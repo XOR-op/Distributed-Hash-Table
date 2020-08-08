@@ -17,9 +17,9 @@ type Logger struct {
 }
 
 const (
-	defaultSkip  = 3
+	defaultSkip  = 2
 	defaultLevel = logrus.InfoLevel
-	outputToFile = true
+	outputToFile = false
 )
 
 var DefaultLogger *Logger
@@ -35,20 +35,22 @@ func NewLogger(info string) (reply *Logger) {
 func DefaultInitialize() {
 	DefaultLogger = new(Logger)
 	DefaultLogger.file = nil
-	DefaultLogger.log = &logrus.Logger{}
-	DefaultLogger.log.SetFormatter(&easy_formatter.Formatter{
-		TimestampFormat: "2006-01-02 15:04:05.000",
-		LogFormat:       "[%lvl%]: %time% - %msg%\n",
-	})
 	if outputToFile {
+		DefaultLogger.log = &logrus.Logger{}
+		DefaultLogger.log.SetFormatter(&easy_formatter.Formatter{
+			TimestampFormat: "2006-01-02 15:04:05.000",
+			LogFormat:       "[%lvl%]: %time% - %msg%\n",
+		})
 		f, err := os.OpenFile("log/log_"+strings.ReplaceAll(time.Now().Format(time.Stamp), " ", "-")+".log", os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			panic(err)
 		}
 		DefaultLogger.file = f
 		DefaultLogger.log.SetOutput(f)
+	}else {
+		DefaultLogger.log=logrus.StandardLogger()
 	}
-	DefaultLogger.info = "DEFAULT LOGGER! YOU CALL THE WRONG OBJECT!"
+	DefaultLogger.info = "DEFAULT"
 	DefaultLogger.log.SetLevel(defaultLevel)
 }
 
@@ -60,7 +62,7 @@ func DefaultClose() {
 
 func (this *Logger) Prefix() string {
 	pc, _, line, _ := runtime.Caller(defaultSkip)
-	return "[" + this.info + "] >>" + runtime.FuncForPC(pc).Name() + "@line" + strconv.Itoa(line) + ": "
+	return "[" + this.info + "] @" + runtime.FuncForPC(pc).Name() + "(line " + strconv.Itoa(line) + "): "
 }
 
 func (this *Logger) Info(args ...interface{}) {

@@ -10,11 +10,11 @@ type KBucket struct {
 	lock        sync.RWMutex
 }
 
-func (self *KBucket) fill(target [K]*Contact, curIndex *int, until int) bool {
+func (self *KBucket) fill(target *[]*Contact, curIndex *int, until int) bool {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	for iter := self.Head(); *curIndex < until && iter != self.VirtualNode(); *curIndex++ {
-		target[*curIndex] = iter.element.Duplicate()
+		*target=append(*target,iter.element.Duplicate())
 		iter = iter.next
 	}
 	return *curIndex == until
@@ -52,6 +52,7 @@ func NewKBucket(maxSize int) (reply *KBucket) {
 	reply.indicator.prev = &reply.indicator
 	reply.indicator.next = &reply.indicator
 	reply.Size = 0
+	reply.lookupTable=make(map[string]*bucketNode)
 	reply.maxSize = maxSize
 	return
 }

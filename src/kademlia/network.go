@@ -56,6 +56,7 @@ func (self *Node)Dial(addr *Contact) (reply *RPCClient, err error) {
 	if err==nil {
 		return &RPCClient{client, addr.Duplicate(),&self.addr,&self.table}, nil
 	}else {
+		self.log.Warning("Dial",addr.Port,"failed:",err)
 		return nil,err
 	}
 }

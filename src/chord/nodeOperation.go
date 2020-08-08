@@ -2,12 +2,13 @@ package chord
 
 import (
 	"context"
+	"github.com/sasha-s/go-deadlock"
 	log "github.com/sirupsen/logrus"
 	"net"
 	"net/rpc"
 	"runtime"
 	"strconv"
-	"sync"
+	//"sync"
 )
 
 const (
@@ -24,22 +25,24 @@ type ChordNode struct {
 	quitRPC                chan bool
 	daemonContext          context.Context
 	quitDaemonInvoker      context.CancelFunc
+	running                bool
 	nodeSuccessor          *Address
 	nodePredecessor        Address
 	fingerUpdateIndex      int
 	alternativeSuccessors  [ALTERNATIVE_SIZE]Address
-	fingerAndSuccessorLock sync.RWMutex
-	predecessorLock        sync.RWMutex
-	alternativeListLock    sync.RWMutex
-	dataLock               sync.Mutex
-	validateSuccessorLock  sync.Mutex
-	notifyLock             sync.Mutex
-	joinLock               sync.Mutex
+	fingerAndSuccessorLock deadlock.RWMutex
+	predecessorLock        deadlock.RWMutex
+	alternativeListLock    deadlock.RWMutex
+	dataLock               deadlock.Mutex
+	validateSuccessorLock  deadlock.Mutex
+	notifyLock             deadlock.Mutex
+	joinLock               deadlock.Mutex
 	storage                *Table
 	succStorageBackup      *Table
 }
 
 func (this *ChordNode) Init(port int) {
+	this.running=true
 	this.addr.Addr = "localhost:" + strconv.Itoa(port)
 	this.addr.Port = port
 	this.addr.Id = IDlize(this.addr.Addr)

@@ -20,6 +20,7 @@ func (self Identifier)BitLen()int{
 }
 
 func (self *Identifier)As(rhs *Identifier)  {
+	self.Val=new(big.Int)
 	self.Val.Set(rhs.Val)
 }
 

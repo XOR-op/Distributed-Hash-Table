@@ -136,6 +136,10 @@ func (this *ChordNode) Run() {
 
 func (this *ChordNode) ForceQuit() {
 	// rpc server should be down
+	if !this.running{
+		return
+	}
+	this.running=false
 	log.Debug(this.addr.Port, " try quit")
 	this.quitRPC <- true
 	log.Debug(this.addr.Port, " quit half")

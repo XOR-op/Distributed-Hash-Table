@@ -13,7 +13,7 @@ const (
 	alpha                 = 3
 	Width                 = 160
 	sleepDuration         = 30 * time.Millisecond
-	tExpire               = 62 * time.Second
+	tExpire               = 75 * time.Second
 	tRefresh              = 12 * time.Second
 	tDuplicate            = 10 * time.Second
 	tRepublish            = 55 * time.Second
@@ -30,8 +30,11 @@ type Node struct {
 
 func (self *Node) FindKClosest(key string) []*Contact {
 	self.log.Trace("start find key", key)
+	return self.FindKClosestSHA1(NewIdentifier(key))
+}
+func (self *Node) FindKClosestSHA1(queryID *Identifier) []*Contact {
+	self.log.Trace("start find id", queryID)
 	// initialization
-	queryID := NewIdentifier(key)
 	seen := make(map[string]struct{})
 	list, n := self.table.KClosest(*queryID)
 	self.log.Debug("local find",n,"closest")
@@ -95,7 +98,7 @@ func (self *Node) FindKClosest(key string) []*Contact {
 	if len(doneList) > K {
 		return doneList[:K]
 	}
-	self.log.Debug("find ", len(doneList), "elements from key", key)
+	defer self.log.Debug("find ", len(doneList), "elements from id", queryID)
 	return doneList
 }
 
@@ -230,6 +233,7 @@ func (self *Node) subStore(key, value string, original bool) (ok bool) {
 }
 
 func (self *Node) Join(port int) {
+	self.table.GoOn()
 	self.table.UpdateContact(NewContact(port))
 	self.FindKClosest(self.addr.Address)
 }

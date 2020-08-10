@@ -3,21 +3,10 @@ package kademlia
 type RoutingTable struct {
 	selfIDRef *Identifier
 	elements  [Width]*KBucket
+	curUpdate int
 }
 
 func (self *RoutingTable) KClosest(targetID Identifier) (reply []*Contact, amount int) {
-	/*
-	defer func() {
-		// sort
-		sort.Slice(reply, func(i, j int) bool {
-			if reply[i]==nil||reply[j]==nil{
-				return reply[j]==nil
-			}
-			disI:=targetID.Xor(reply[i].ID)
-			disJ:=targetID.Xor(reply[j].ID)
-			return disI.LessThan(&disJ)
-		})
-	}()*/
 	reply=make([]*Contact,0)
 	for i, _ := range reply {
 		reply[i] = nil
@@ -48,8 +37,16 @@ func (self *RoutingTable) UpdateContact(addr *Contact) {
 func NewRoutingTable(id *Identifier)(reply *RoutingTable)  {
 	reply=new(RoutingTable)
 	reply.selfIDRef=id
+	reply.curUpdate=0
 	for i,_:=range reply.elements{
 		reply.elements[i]=NewKBucket(K)
 	}
 	return
 }
+
+func (self *RoutingTable)GoOn()  {
+	for i:=range self.elements{
+		self.elements[i].RefreshTime()
+	}
+}
+

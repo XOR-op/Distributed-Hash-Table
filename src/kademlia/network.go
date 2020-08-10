@@ -33,16 +33,9 @@ func OldPing(addr *Contact) bool {
 	return false
 }
 
-//func (self *Node)Ping(addr *Contact) bool {
-//	if Ping(addr) {
-//		self.table.UpdateContact(addr, true)
-//		return true
-//	}
-//	return false
-//}
 
 func (self *Node)Dial(addr *Contact) (reply *RPCClient, err error) {
-	// todo should have used UDP
+	// Based on fact that RPC necessitates connection-oriented transports, we use TCP instead of UDP mentioned in the paper.
 	client, err := rpc.Dial("tcp", addr.Address)
 	for retryCnt := 0; err != nil && retryCnt < retryTimes; retryCnt++ {
 		// avoid "resource temporarily unavailable" error

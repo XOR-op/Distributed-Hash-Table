@@ -1,20 +1,28 @@
 package kademlia
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type KBucket struct {
-	lookupTable map[string]*bucketNode
-	indicator   bucketNode
-	Size        int
-	maxSize     int
-	lock        sync.RWMutex
+	lookupTable    map[string]*bucketNode
+	indicator      bucketNode
+	Size           int
+	maxSize        int
+	lock           sync.RWMutex
+	lastUpdateTime time.Time
+}
+
+func (self *KBucket)RefreshTime()  {
+	self.lastUpdateTime=time.Now()
 }
 
 func (self *KBucket) fill(target *[]*Contact, curIndex *int, until int) bool {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	for iter := self.Head(); *curIndex < until && iter != self.VirtualNode(); *curIndex++ {
-		*target=append(*target,iter.element.Duplicate())
+		*target = append(*target, iter.element.Duplicate())
 		iter = iter.next
 	}
 	return *curIndex == until
@@ -23,6 +31,7 @@ func (self *KBucket) fill(target *[]*Contact, curIndex *int, until int) bool {
 func (self *KBucket) Add(addr *Contact) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
+	self.RefreshTime()
 	val, ok := self.lookupTable[addr.Address]
 	if ok {
 		val.Detach()
@@ -52,8 +61,9 @@ func NewKBucket(maxSize int) (reply *KBucket) {
 	reply.indicator.prev = &reply.indicator
 	reply.indicator.next = &reply.indicator
 	reply.Size = 0
-	reply.lookupTable=make(map[string]*bucketNode)
+	reply.lookupTable = make(map[string]*bucketNode)
 	reply.maxSize = maxSize
+	reply.RefreshTime()
 	return
 }
 

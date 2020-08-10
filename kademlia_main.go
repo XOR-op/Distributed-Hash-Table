@@ -2,6 +2,7 @@ package main
 
 import (
 	"DHT/src/kademlia"
+	"github.com/fatih/color"
 	"strconv"
 	"time"
 )
@@ -16,6 +17,7 @@ func gen(i int)(string,string)  {
 	return strconv.Itoa(i),"@"+strconv.Itoa(i)+"#"
 }
 func main()  {
+	Red:=color.New(color.FgRed)
 	kademlia.DefaultInitialize()
 	defer kademlia.DefaultClose()
 	arr:=make([]*kademlia.Node,kadNodeN)
@@ -44,9 +46,11 @@ func main()  {
 		val,ok:=arr[nodeCur].Get(k)
 		if !ok{
 			kademlia.DefaultLogger.Warning("Missing:",k)
+			Red.Println("Missing:",k)
 		}else {
 			if v!=val{
 				kademlia.DefaultLogger.Warning("not compatible:[",k,":",v,"],wrong:",val)
+				Red.Println("not compatible:[",k,":",v,"],wrong:",val)
 			}
 		}
 		time.Sleep(50*time.Millisecond)
@@ -65,9 +69,11 @@ func main()  {
 		val,ok:=arr[nodeCur].Get(k)
 		if !ok{
 			kademlia.DefaultLogger.Warning("Missing:",k)
+			Red.Println("Missing:",k)
 		}else {
 			if v!=val{
 				kademlia.DefaultLogger.Warning("not compatible:[",k,":",v,"],wrong:",val)
+				Red.Println("not compatible:[",k,":",v,"],wrong:",val)
 			}
 		}
 		time.Sleep(50*time.Millisecond)

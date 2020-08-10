@@ -35,3 +35,17 @@ func NewIdentifier(s string)(reply *Identifier)  {
 func (self Identifier)LessThan(rhs *Identifier)bool  {
 	return self.Val.Cmp(rhs.Val)<0
 }
+
+func NewMidIdentifier(lessBit uint) (reply *Identifier) {
+	reply=new(Identifier)
+	if lessBit==0{
+		reply.Val=new(big.Int).SetUint64(0)
+		return
+	}
+	reply.Val=new(big.Int)
+	one:=new(big.Int).SetUint64(1)
+	less:=new(big.Int).Lsh(one,lessBit-1)
+	more:=new(big.Int).Lsh(one,lessBit)
+	reply.Val.Add(less,more)
+	return
+}

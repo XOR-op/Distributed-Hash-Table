@@ -18,8 +18,10 @@ type Logger struct {
 
 const (
 	defaultSkip  = 2
-	defaultLevel = logrus.TraceLevel
-	outputToFile = true
+	//defaultLevel = logrus.TraceLevel
+	//outputToFile = true
+	defaultLevel = logrus.InfoLevel
+	outputToFile = false
 )
 
 var DefaultLogger *Logger

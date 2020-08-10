@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	daemonInterval = 5*time.Second
+	daemonInterval = 5 * time.Second
 )
 
 func (self *Node) rpcFindNode(request FindNodeRequest, reply *FindNodeResponse) error {
@@ -87,36 +87,48 @@ func (self *Node) Duplicate() {
 	self.log.Trace("duplicate")
 	data := self.database.NeedDuplicate()
 	for k, v := range data {
-		self.subStore(k,v,false)
+		self.subStore(k, v, false)
 	}
 }
 
-func (self *Node)Republish()  {
+func (self *Node) Republish() {
 	self.log.Trace("republish")
-	data:=self.database.NeedRepublish()
-	for k,v:=range data{
-		self.subStore(k,v,true)
+	data := self.database.NeedRepublish()
+	for k, v := range data {
+		self.subStore(k, v, true)
 	}
 }
-func (self *Node)Expire()  {
+func (self *Node) Expire() {
 	self.log.Trace("expire")
 	self.database.Expire()
+}
+
+func (self *Node) Refresh() {
+	self.log.Trace("refresh")
+	if !self.table.elements[self.table.curUpdate].lastUpdateTime.Add(tRefresh).After(time.Now()) {
+		self.FindKClosestSHA1(NewMidIdentifier(uint(self.table.curUpdate)))
+	}
+	self.table.curUpdate=(self.table.curUpdate+1)%Width
 }
 
 func (self *Node) RunDaemon() {
 	for self.running {
 		time.Sleep(daemonInterval)
-		if !self.running{
+		if !self.running {
 			return
 		}
 		self.Duplicate()
-		if !self.running{
+		if !self.running {
 			return
 		}
 		self.Expire()
-		if !self.running{
+		if !self.running {
 			return
 		}
 		self.Republish()
+		if !self.running {
+			return
+		}
+		self.Refresh()
 	}
 }

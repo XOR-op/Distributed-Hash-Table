@@ -33,6 +33,14 @@ func (self *RoutingTable) UpdateContact(addr *Contact) {
 	}
 	self.elements[bucketID].Add(addr)
 }
+func (self *RoutingTable) DropContact(addr *Contact) {
+	bucketID := addr.ID.Xor(*self.selfIDRef).BitLen() - 1
+	if bucketID==-1{
+		return
+	}
+	self.elements[bucketID].Drop(addr)
+}
+
 
 func NewRoutingTable(id *Identifier)(reply *RoutingTable)  {
 	reply=new(RoutingTable)

@@ -43,7 +43,8 @@ func (self *Storage) Store(key, value string, fromOriginal bool) {
 		self.expireTable[key] = time.Now().Add(tExpire)
 		self.duplicateTable[key] = time.Now().Add(tDuplicate)
 	} else if _,ok:=self.data[key];!ok{
-		self.expireTable[key]=time.Now().Add(tDuplicate)
+		//self.expireTable[key]=time.Now().Add(tExpire)
+		self.expireTable[key].Add(tDuplicate)
 	}
 	self.data[key] = value
 }

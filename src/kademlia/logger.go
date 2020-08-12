@@ -86,6 +86,9 @@ func (this *Logger) Debug(args ...interface{}) {
 func (this *Logger) Trace(args ...interface{}) {
 	this.log.Trace(this.Prefix(), args)
 }
+func (this *Logger) Error(args ...interface{}) {
+	this.log.Error(this.Prefix(), args)
+}
 
 func GetMyName() string {
 	pc, _, _, _ := runtime.Caller(1)

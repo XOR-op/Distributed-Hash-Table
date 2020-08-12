@@ -2,22 +2,20 @@ package main
 
 import (
 	"DHT/src/kademlia"
-	"github.com/fatih/color"
 	"strconv"
 	"time"
 )
 
 const (
 	portStart = 13301
-	kadNodeN=30
-	kadDataN=120
+	kadNodeN=25
+	kadDataN=80
 )
 
 func gen(i int)(string,string)  {
 	return strconv.Itoa(i),"@"+strconv.Itoa(i)+"#"
 }
 func main()  {
-	Red:=color.New(color.FgRed)
 	kademlia.DefaultInitialize()
 	defer kademlia.DefaultClose()
 	arr:=make([]*kademlia.Node,kadNodeN)
@@ -32,8 +30,9 @@ func main()  {
 	kademlia.DefaultLogger.Info("Join done")
 	nodeCur:=7
 	for i:=0;i<kadDataN;i++{
-		nodeCur=(nodeCur+i^2)%kadNodeN
+		nodeCur=(nodeCur+i^2)%10
 		arr[nodeCur].Store(gen(i))
+		kademlia.DefaultLogger.Debug("store",i)
 	}
 	kademlia.DefaultLogger.Info("Store done")
 	time.Sleep(2*time.Second)
@@ -45,12 +44,10 @@ func main()  {
 		}
 		val,ok:=arr[nodeCur].Get(k)
 		if !ok{
-			kademlia.DefaultLogger.Warning("Missing:",k)
-			Red.Println("Missing:",k)
+			kademlia.DefaultLogger.Error("Missing:",k)
 		}else {
 			if v!=val{
-				kademlia.DefaultLogger.Warning("not compatible:[",k,":",v,"],wrong:",val)
-				Red.Println("not compatible:[",k,":",v,"],wrong:",val)
+				kademlia.DefaultLogger.Error("not compatible:[",k,":",v,"],wrong:",val)
 			}
 		}
 		time.Sleep(50*time.Millisecond)
@@ -59,7 +56,8 @@ func main()  {
 		arr[i].Quit()
 		time.Sleep(200*time.Millisecond)
 	}
-	time.Sleep(time.Second)
+	kademlia.DefaultLogger.Info("Get after quit start")
+	time.Sleep(20*time.Second)
 	for i:=kadDataN-1;i>=0;i--{
 		k,v:=gen(i)
 		nodeCur=(nodeCur+i^2)%kadNodeN
@@ -68,12 +66,10 @@ func main()  {
 		}
 		val,ok:=arr[nodeCur].Get(k)
 		if !ok{
-			kademlia.DefaultLogger.Warning("Missing:",k)
-			Red.Println("Missing:",k)
+			kademlia.DefaultLogger.Error("Missing:",k)
 		}else {
 			if v!=val{
-				kademlia.DefaultLogger.Warning("not compatible:[",k,":",v,"],wrong:",val)
-				Red.Println("not compatible:[",k,":",v,"],wrong:",val)
+				kademlia.DefaultLogger.Error("not compatible:[",k,":",v,"],wrong:",val)
 			}
 		}
 		time.Sleep(50*time.Millisecond)

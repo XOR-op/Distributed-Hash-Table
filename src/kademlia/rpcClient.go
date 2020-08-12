@@ -2,13 +2,12 @@ package kademlia
 
 import (
 	"net/rpc"
-	"sync/atomic"
 )
 
-var (
-	GlobalRequest  int32 = 0
-	GlobalResponse int32 = 0
-)
+//var (
+//	GlobalRequest  int32 = 0
+//	GlobalResponse int32 = 0
+//)
 
 type RPCClient struct {
 	conn       *rpc.Client
@@ -47,8 +46,8 @@ func (self *RPCClient) FindValueAsync(key string, id *Identifier, channel chan *
 	err := self.conn.Call("RPCInterface.FindValue", FindValueRequest{key, *id, self.selfAddr}, reply)
 	reply.Err = err
 	reply.Auth = self.remoteAddr
-	atomic.AddInt32(&GlobalResponse, 1)
-	DefaultLogger.Debug("GlobalResponse", GlobalResponse, self.remoteAddr.Port)
+	//atomic.AddInt32(&GlobalResponse, 1)
+	//DefaultLogger.Debug("GlobalResponse", GlobalResponse, self.remoteAddr.Port)
 	channel <- reply
 }
 

@@ -13,10 +13,10 @@ const (
 	alpha                 = 3
 	Width                 = 160
 	sleepDuration         = 30 * time.Millisecond
-	tExpire               = 75 * time.Second
-	tRefresh              = 12 * time.Second
-	tDuplicate            = 10 * time.Second
-	tRepublish            = 55 * time.Second
+	tExpire               = 400 * time.Second
+	tRefresh              = 30 * time.Second
+	tDuplicate            = 20 * time.Second
+	tRepublish            = 360 * time.Second
 )
 
 type Node struct {
@@ -33,7 +33,7 @@ func (self *Node) FindKClosest(key string) []*Contact {
 	return self.FindKClosestSHA1(NewIdentifier(key))
 }
 func (self *Node) FindKClosestSHA1(queryID *Identifier) []*Contact {
-	self.log.Trace("start find id", queryID)
+	self.log.Trace("start find id", *queryID)
 	// initialization
 	seen := make(map[string]struct{})
 	list, n := self.table.KClosest(*queryID)
@@ -56,6 +56,7 @@ func (self *Node) FindKClosestSHA1(queryID *Identifier) []*Contact {
 				//defer atomic.AddInt32(hasConn, -1)
 				client, err := self.Dial(addr)
 				if err != nil {
+					atomic.AddInt32(hasConn, -1)
 					return
 				}
 				client.FindNodeAsync(&addr.ID, channel)
@@ -66,10 +67,13 @@ func (self *Node) FindKClosestSHA1(queryID *Identifier) []*Contact {
 	for index < len(pendingList)||*hasConn>0 {
 		// hasConn will always be leq than alpha
 		if *hasConn > 0 {
+			//self.log.Trace("block")
 			response := <-channel
+			//self.log.Trace("unblock")
 			atomic.AddInt32(hasConn, -1)
 			if response.Err != nil {
 				self.log.Warning(response.Err)
+				self.table.DropContact(response.Auth)
 				continue
 			}
 			doneList = append(doneList, response.Auth)
@@ -85,6 +89,7 @@ func (self *Node) FindKClosestSHA1(queryID *Identifier) []*Contact {
 					//defer atomic.AddInt32(hasConn, -1)
 					client, err := self.Dial(addr)
 					if err != nil {
+						atomic.AddInt32(hasConn, -1)
 						return
 					}
 					client.FindNodeAsync(&addr.ID, channel)
@@ -94,12 +99,93 @@ func (self *Node) FindKClosestSHA1(queryID *Identifier) []*Contact {
 			index++
 		}
 	}
-	SortContactSlice(doneList, queryID)
+	SortContactSlice(&doneList, queryID)
 	if len(doneList) > K {
 		return doneList[:K]
 	}
 	defer self.log.Debug("find ", len(doneList), "elements from id", queryID)
 	return doneList
+}
+
+func (self *Node) OldGet(key string) (value string,ok bool) {
+	queryID:=NewIdentifier(key)
+	self.log.Trace("start find id", queryID)
+	// initialization
+	seen := make(map[string]struct{})
+	list, n := self.table.KClosest(*queryID)
+	self.log.Debug("local find",n,"closest")
+	pendingList := list[:n]
+	doneList := make([]*Contact, 0)
+	// begin iteration
+	channel := make(chan *FindValueResponse, K)
+	hasConn := new(int32)
+	*hasConn = 0
+	index := 0
+	for ; index < n && *hasConn < alpha; index++ {
+		// initial call
+		seen[pendingList[index].Address] = struct{}{}
+		if OldPing(pendingList[index]) {
+			self.log.Trace("Succeed ping",pendingList[index].Port)
+			doneList = append(doneList, pendingList[index])
+			atomic.AddInt32(hasConn, 1)
+			go func(addr *Contact) {
+				//defer atomic.AddInt32(hasConn, -1)
+				client, err := self.Dial(addr)
+				if err != nil {
+					atomic.AddInt32(hasConn, -1)
+					return
+				}
+				client.FindValueAsync(key,&addr.ID, channel)
+				client.Close()
+			}(pendingList[index])
+		}
+	}
+	for index < len(pendingList)||*hasConn>0 {
+		// hasConn will always be leq than alpha
+		if *hasConn > 0 {
+			//self.log.Trace("block")
+			response := <-channel
+			//self.log.Trace("unblock")
+			atomic.AddInt32(hasConn, -1)
+			if response.Err != nil {
+				self.log.Warning(response.Err)
+				self.table.DropContact(response.Auth)
+				continue
+			}
+			if response.Stat == FindValue {
+				// store and return
+				self.log.Trace("Early found")
+				for i := range pendingList {
+					if _, found := seen[pendingList[i].Address]; found && pendingList[i].Address != response.Auth.Address {
+						go self.storeAsync(key, response.Value, pendingList[i], false)
+					}
+				}
+				return response.Value, true
+			}
+			doneList = append(doneList, response.Auth)
+			for _, v := range response.KNodes[:response.Amount] {
+				pendingList = append(pendingList, v)
+			}
+		}
+		for *hasConn < alpha && index < len(pendingList) {
+			if _, found := seen[pendingList[index].Address]; !found {
+				seen[pendingList[index].Address] = struct{}{}
+				atomic.AddInt32(hasConn, 1)
+				go func(addr *Contact) {
+					//defer atomic.AddInt32(hasConn, -1)
+					client, err := self.Dial(addr)
+					if err != nil {
+						atomic.AddInt32(hasConn, -1)
+						return
+					}
+					client.FindValueAsync(key,&addr.ID, channel)
+					client.Close()
+				}(pendingList[index])
+			}
+			index++
+		}
+	}
+	return "",false
 }
 
 func (self *Node) Get(key string) (value string, ok bool) {
@@ -114,7 +200,7 @@ func (self *Node) Get(key string) (value string, ok bool) {
 	list, n := self.table.KClosest(*queryID)
 	self.log.Trace("KClosest end")
 	shortList := list[:n]
-	SortContactSlice(shortList, queryID)
+	SortContactSlice(&shortList, queryID)
 	closestNode := shortList[0]
 	channel := make(chan *FindValueResponse, K*2)
 	hasConn := 0
@@ -124,8 +210,8 @@ func (self *Node) Get(key string) (value string, ok bool) {
 		seen[shortList[index].Address] = struct{}{}
 		if OldPing(shortList[index]) {
 			self.log.Trace("ping succeed",shortList[index])
-			atomic.AddInt32(&GlobalRequest, 1)
-			DefaultLogger.Debug("GlobalRequest", GlobalRequest, shortList[index].Port)
+			//atomic.AddInt32(&GlobalRequest, 1)
+			//DefaultLogger.Debug("GlobalRequest", GlobalRequest, shortList[index].Port)
 			hasConn++
 			go self.findValueAsync(key, shortList[index], channel)
 		}
@@ -134,9 +220,9 @@ func (self *Node) Get(key string) (value string, ok bool) {
 	closestNodeBackup := closestNode
 	for hasConn > 0 {
 		closestNodeBackup = closestNode
-		self.log.Trace("wait")
+		//self.log.Trace("wait")
 		response := <-channel
-		self.log.Trace("received")
+		//self.log.Trace("received")
 		hasConn--
 		if response.Err == nil {
 			if response.Stat == FindValue {
@@ -152,13 +238,14 @@ func (self *Node) Get(key string) (value string, ok bool) {
 			// merge
 			self.log.Trace("Merge")
 			shortList = append(shortList, response.KNodes[:min(alpha, len(response.KNodes))]...)
-			SortContactSlice(shortList, queryID)
+			SortContactSlice(&shortList, queryID)
 			shortList = shortList[:min(K, len(shortList))]
 			if LessDistance(queryID, shortList[0], closestNode) {
 				closestNode = shortList[0]
 			}
 		} else {
 			self.log.Warning("response err:", response.Err)
+			self.table.DropContact(response.Auth)
 			for i := range shortList {
 				if shortList[i].Address == response.Auth.Address {
 					// remove failed contact
@@ -181,8 +268,8 @@ func (self *Node) Get(key string) (value string, ok bool) {
 			self.log.Trace("has to find all left nodes")
 			for i := 0; i < len(shortList); i++ {
 				if _, found := seen[shortList[i].Address]; !found {
-					atomic.AddInt32(&GlobalRequest, 1)
-					DefaultLogger.Debug("GlobalRequest", GlobalRequest, shortList[i].Port)
+					//atomic.AddInt32(&GlobalRequest, 1)
+					//DefaultLogger.Debug("GlobalRequest", GlobalRequest, shortList[i].Port)
 					hasConn++
 					seen[shortList[i].Address] = struct{}{}
 					go self.findValueAsync(key, shortList[i], channel)
@@ -193,8 +280,8 @@ func (self *Node) Get(key string) (value string, ok bool) {
 		self.log.Trace("new conn")
 		for i := 0; i < len(shortList) && hasConn < alpha; i++ {
 			if _, found := seen[shortList[i].Address]; !found {
-				atomic.AddInt32(&GlobalRequest, 1)
-				DefaultLogger.Debug("GlobalRequest", GlobalRequest, shortList[i].Port)
+				//atomic.AddInt32(&GlobalRequest, 1)
+				//DefaultLogger.Debug("GlobalRequest", GlobalRequest, shortList[i].Port)
 				hasConn++
 				seen[shortList[i].Address] = struct{}{}
 				go self.findValueAsync(key, shortList[i], channel)
@@ -214,7 +301,7 @@ func (self *Node) subStore(key, value string, original bool) (ok bool) {
 	self.log.Debug("can store", len(result), "nodes")
 	cnt := new(int32)
 	*cnt = 0
-	for _, addr := range result {
+	for i:=0;i<len(result); {
 		if *cnt < alpha {
 			go func(addr *Contact) {
 				atomic.AddInt32(cnt, 1)
@@ -224,10 +311,14 @@ func (self *Node) subStore(key, value string, original bool) (ok bool) {
 					_ = client.Store(key, value, original)
 					client.Close()
 				}
-			}(addr)
+			}(result[i])
+			i++
 		} else {
 			time.Sleep(sleepDuration)
 		}
+	}
+	for *cnt>0{
+		time.Sleep(sleepDuration)
 	}
 	return true
 }

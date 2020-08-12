@@ -1,7 +1,7 @@
 package kademlia
 
 import (
-	"sync"
+	"github.com/sasha-s/go-deadlock"
 	"time"
 )
 
@@ -10,7 +10,7 @@ type KBucket struct {
 	indicator      bucketNode
 	Size           int
 	maxSize        int
-	lock           sync.RWMutex
+	lock           deadlock.RWMutex
 	lastUpdateTime time.Time
 }
 
@@ -42,6 +42,7 @@ func (self *KBucket) Add(addr *Contact) {
 			n.attachAfter(self.VirtualNode())
 			self.lookupTable[addr.Address] = n
 		} else {
+			DefaultLogger.Debug("full")
 			n := self.Tail().Detach()
 			if n.element.TestConn() {
 				n.attachAfter(self.VirtualNode())
@@ -53,6 +54,17 @@ func (self *KBucket) Add(addr *Contact) {
 			}
 		}
 	}
+}
+
+func (self *KBucket)Drop(addr *Contact){
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	val, ok := self.lookupTable[addr.Address]
+	if ok{
+		val.Detach()
+		delete(self.lookupTable,val.element.Address)
+	}
+
 }
 
 func NewKBucket(maxSize int) (reply *KBucket) {
